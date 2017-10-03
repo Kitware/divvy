@@ -1,29 +1,29 @@
-const divviRules = require('../Utilities/config/rules-divvi.js');
+const divvyRules = require('../Utilities/config/rules-divvy.js');
 const linterRules = require('../Utilities/config/rules-linter.js');
 const examplesRules = require('../Utilities/config/rules-examples.js');
 
 const path = require('path');
 
 module.exports = {
-  baseUrl: '/divvi',
+  baseUrl: '/divvy',
   work: './build-tmp',
   config: {
-    title: 'Divvi',
+    title: 'Divvy',
     description: '"Analyse your data live in the Web"',
     subtitle: '"Explore relationship between your variables"',
     author: 'Kitware Inc.',
     timezone: 'UTC',
-    url: 'https://kitware.github.io/divvi',
-    root: '/divvi/',
-    github: 'kitware/divvi',
+    url: 'https://kitware.github.io/divvy',
+    root: '/divvy/',
+    github: 'kitware/divvy',
   },
   webpack: {
     module: {
-      rules: [].concat(linterRules, divviRules, examplesRules),
+      rules: [].concat(linterRules, divvyRules, examplesRules),
     },
     resolve: {
       alias: {
-        'pvw-divvi': path.resolve('.'),
+        'pvw-divvy': path.resolve('.'),
       },
     },
   },

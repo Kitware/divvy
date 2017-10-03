@@ -1,7 +1,7 @@
 {
-    "name": "pvw-divvi",
+    "name": "pvw-divvy",
     "version": "0.0.0-semantically-release",
-    "description": "ParaViewWeb/Divvi for your Data Analytic",
+    "description": "ParaViewWeb/Divvy for your Data Analytic",
     "repository": {
         "type": "git",
         "url": "git+https://github.com/kitware/divvy.git"
@@ -54,7 +54,7 @@
         }
     ],
     "bin": {
-        "Divvi": "./Server/pvw-divvi.py"
+        "Divvy": "./Server/pvw-divvi.py"
     },
     "nyc": {
         "include": [
