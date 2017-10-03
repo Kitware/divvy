@@ -1,0 +1,67 @@
+{
+    "name": "pvw-divvi",
+    "version": "0.0.0-semantically-release",
+    "description": "ParaViewWeb/Divvi for your Data Analytic",
+    "repository": {
+        "type": "git",
+        "url": "git+https://github.com/kitware/divvy.git"
+    },
+    "license": "BSD-3-Clause",
+    "bugs": {
+        "url": "https://github.com/kitware/divvy/issues"
+    },
+    "homepage": "https://github.com/kitware/divvy#readme",
+    "main": "./dist/divvy.js",
+    "dependencies": {
+        "base64-js": "1.2.0",
+        "commander": "2.9.0",
+        "shelljs": "0.7.7",
+        "gh-pages": "1.0.0",
+        "paraviewweb": "2.5.5"
+    },
+    "devDependencies": {
+        "eslint-config-prettier": "2.2.0",
+        "eslint-plugin-prettier": "2.1.2",
+        "kw-doc": "1.0.15",
+        "kw-web-suite": "3.1.1",
+        "prettier": "1.4.4",
+        "size-limit": "^0.11.3"
+    },
+    "scripts": {
+        "size": "size-limit --why --config ./webpack.config.js",
+        "validate": "prettier --single-quote --trailing-comma es5 --print-width 100 --list-different \"Sources/**/*.js\"",
+        "reformat": "prettier --single-quote --trailing-comma es5 --print-width 100 --write \"Sources/**/*.js\"",
+        "reformat-only": "prettier --single-quote --trailing-comma es5 --print-width 100 --write",
+        "doc": "kw-doc -c ./Documentation/config.js",
+        "doc:www": "kw-doc -c ./Documentation/config.js -s",
+        "doc:publish": "kw-doc -c ./Documentation/config.js -mp",
+        "example": "node ./Utilities/ExampleRunner/example-runner-cli.js -c ./Documentation/config.js",
+        "build": "webpack --progress --colors",
+        "build:debug": "webpack --progress --colors --display-modules",
+        "build:release": "npm run build -- -p",
+        "commit": "git cz",
+        "semantic-release": "semantic-release pre && npm publish && semantic-release post"
+    },
+    "config": {
+        "commitizen": {
+            "path": "node_modules/cz-conventional-changelog"
+        }
+    },
+    "size-limit": [
+        {
+            "path": "./Sources/index.js",
+            "limit": "200 KB"
+        }
+    ],
+    "bin": {
+        "Divvi": "./Server/pvw-divvi.py"
+    },
+    "nyc": {
+        "include": [
+            "Sources/**/*.js"
+        ],
+        "exclude": [
+            "Sources/**/test/*.js"
+        ]
+    }
+}

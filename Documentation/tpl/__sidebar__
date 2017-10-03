@@ -1,0 +1,12 @@
+docs:
+  getting_started:
+    overview: index.html
+
+  develop:
+    requirement: develop_requirement.html
+    build: develop_build.html
+
+  miscellaneous:
+    tools: misc_tools.html
+    troubleshooting: misc_troubleshooting.html
+    contributing: misc_contributing.html
