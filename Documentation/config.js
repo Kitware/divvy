@@ -17,16 +17,6 @@ module.exports = {
     root: '/divvy/',
     github: 'kitware/divvy',
   },
-  webpack: {
-    module: {
-      rules: [].concat(linterRules, divvyRules, examplesRules),
-    },
-    resolve: {
-      alias: {
-        'pvw-divvy': path.resolve('.'),
-      },
-    },
-  },
   copy: [
     { src: '../Data/*', dest: './build-tmp/public/data' },
   ],
