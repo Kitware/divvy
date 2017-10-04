@@ -34,7 +34,7 @@
         "reformat-only": "prettier --single-quote --trailing-comma es5 --print-width 100 --write",
         "doc": "kw-doc -c ./Documentation/config.js",
         "doc:www": "kw-doc -c ./Documentation/config.js -s",
-        "doc:publish": "kw-doc -c ./Documentation/config.js -mp",
+        "doc:publish": "kw-doc -c ./Documentation/config.js -p",
         "example": "node ./Utilities/ExampleRunner/example-runner-cli.js -c ./Documentation/config.js",
         "build": "webpack --progress --colors",
         "build:debug": "webpack --progress --colors --display-modules",
