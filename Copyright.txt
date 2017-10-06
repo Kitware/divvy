@@ -1,6 +1,6 @@
 /*=========================================================================
 
-  Program:   Divvi
+  Program:   Divvy
   Module:    Copyright.txt
 
 Copyright (c) 2017 Kitware

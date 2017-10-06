@@ -1,34 +1,14 @@
-## [VTK.js - The Visualization Toolkit for JavaScript](http://kitware.github.io/vtk-js/)
+## [Divvy - interconnected data visualization](http://kitware.github.io/divvy/)
 
-[![Build Status](https://travis-ci.org/Kitware/vtk-js.svg)](https://travis-ci.org/Kitware/vtk.js)
-[![Dependency Status](https://david-dm.org/kitware/vtk-js.svg)](https://david-dm.org/kitware/vtk-js)
+[![Build Status](https://travis-ci.org/Kitware/vtk-js.svg)](https://travis-ci.org/Kitware/divvy)
 [![semantic-release](https://img.shields.io/badge/%20%20%F0%9F%93%A6%F0%9F%9A%80-semantic--release-e10079.svg)](https://github.com/semantic-release/semantic-release)
-![npm-download](https://img.shields.io/npm/dm/vtk.js.svg)
 ![npm-version-requirement](https://img.shields.io/badge/npm->=3.0.0-brightgreen.svg)
 ![node-version-requirement](https://img.shields.io/badge/node->=5.0.0-brightgreen.svg)
 
 Introduction
 ============
 
-VTK is an open-source software system for image processing, 3D
-graphics, volume rendering and visualization. VTK includes many
-advanced algorithms (e.g., surface reconstruction, implicit modelling,
-decimation) and rendering techniques (e.g., hardware-accelerated
-volume rendering, LOD control).
-
-VTK is used by academicians for teaching and research; by government
-research institutions such as Los Alamos National Lab in the US or
-CINECA in Italy; and by many commercial firms who use VTK to build or
-extend products.
-
-The origin of VTK is with the textbook "The Visualization Toolkit, an
-Object-Oriented Approach to 3D Graphics" originally published by
-Prentice Hall and now published by Kitware, Inc. (Third Edition ISBN
-1-930934-07-6). VTK has grown (since its initial release in 1994) to a
-world-wide user base in the commercial, academic, and research
-communities.
-
-vtk.js aims to be a subset of VTK and provide 3D rendering using WebGL.
+Divvy is a ParaViewWeb application showing interconnected data visualization components in a common workbench. More to come!
 
 Reporting Bugs
 ==============
@@ -37,23 +17,23 @@ If you have found a bug:
 
 1. If you have a patch, please read the [CONTRIBUTING.md][] document.
 
-2. Otherwise, please join the one of the [VTK Mailing Lists][] and ask
+2. Otherwise, please join the one of the [ParaView Mailing Lists][] and ask
    about the expected and observed behaviors to determine if it is
    really a bug.
 
 3. Finally, if the issue is not resolved by the above steps, open
-   an entry in the [VTK Issue Tracker][].
+   an entry in the [Divvy Issue Tracker][].
 
 [CONTRIBUTING.md]: CONTRIBUTING.md
-[VTK Mailing Lists]: http://www.vtk.org/mailing-lists/
-[VTK Issue Tracker]: https://github.com/Kitware/vtk-js/issues
+[ParaView Mailing Lists]: http://www.paraview.org/mailing-lists/
+[Divvy Issue Tracker]: https://github.com/Kitware/divvy/issues
 
 Requirements
 ============
 
-In general VTK tries to be as portable as possible; the specific configurations below are known to work and tested.
+In general we try to be as portable as possible; the specific configurations below are known to work and tested.
 
-vtk.js supports the following development environments:
+We support the following development environments:
 
 - Node 5+
 - NPM 3+
@@ -67,7 +47,7 @@ and the following browsers:
 Documentation
 =============
 
-See the [documentation](https://kitware.github.io/vtk-js) for a
+See the [documentation](https://kitware.github.io/divvy) for a
 getting started guide, advanced documentation, and API descriptions.
 
 Contributing
@@ -78,7 +58,7 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for instructions to contribute.
 License
 =======
 
-VTK is distributed under the OSI-approved BSD 3-clause License.
+Divvy is distributed under the OSI-approved BSD 3-clause License.
 See [Copyright.txt][] for details.
 
 [Copyright.txt]: Copyright.txt

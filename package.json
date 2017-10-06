@@ -54,7 +54,7 @@
         }
     ],
     "bin": {
-        "Divvy": "./Server/pvw-divvi.py"
+        "Divvy": "./Server/pvw-divvy.py"
     },
     "nyc": {
         "include": [
