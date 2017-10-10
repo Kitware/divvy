@@ -12,7 +12,7 @@ import WorkbenchController from 'paraviewweb/src/Component/React/WorkbenchContro
 import { debounce } from 'paraviewweb/src/Common/Misc/Debounce';
 
 
-const container = document.querySelector('.content');
+const container = document.querySelector('body');
 container.style.height = '100vh';
 container.style.width = '100vw';
 
@@ -83,8 +83,10 @@ workbench.onChange((model) => {
 
 workbench.onVisibilityChange((event) => {
   const { component, index, count } = event;
-  console.log(component ? component.color : 'none', index, count,
-              index === -1 || index >= count ? 'hidden' : 'visible');
+  console.log(
+    component ? component.color : 'none', index, count,
+    index === -1 || index >= count ? 'hidden' : 'visible',
+  );
 });
 
 // Create a debounced window resize handler

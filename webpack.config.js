@@ -1,5 +1,6 @@
 const webpack = require('webpack');
 const path = require('path');
+const HtmlWebpackPlugin = require('html-webpack-plugin');
 
 const entry = path.join(__dirname, './Sources/index.js');
 const sourcePath = path.join(__dirname, './Sources');
@@ -32,4 +33,5 @@ module.exports = {
       PVWStyle: path.resolve('./node_modules/paraviewweb/style'),
     },
   },
+  plugins: [new HtmlWebpackPlugin()]
 };
