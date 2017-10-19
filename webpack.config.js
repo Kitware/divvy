@@ -29,9 +29,9 @@ module.exports = {
       sourcePath,
     ],
     alias: {
-      'divvy': __dirname,
+      divvy: __dirname,
       PVWStyle: path.resolve('./node_modules/paraviewweb/style'),
     },
   },
-  plugins: [new HtmlWebpackPlugin()]
+  plugins: [new HtmlWebpackPlugin()],
 };

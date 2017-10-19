@@ -22,12 +22,15 @@
         "react-dom": "15.3.1"
     },
     "devDependencies": {
+        "babel-plugin-transform-remove-strict-mode": "0.0.2",
+        "d3": "3.5.17",
         "eslint-config-prettier": "2.6.0",
         "eslint-plugin-prettier": "2.3.1",
         "font-awesome": "4.7.0",
         "kw-doc": "1.1.1",
         "kw-web-suite": "4.0.0",
         "monologue.js": "0.3.5",
+        "mout": "1.1.0",
         "prettier": "1.7.4",
         "size-limit": "^0.11.3"
     },
