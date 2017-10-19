@@ -14,6 +14,17 @@ import SelectionProvider from 'paraviewweb/src/InfoViz/Core/SelectionProvider';
 import MutualInformationProvider from 'paraviewweb/src/InfoViz/Core/MutualInformationProvider';
 // import PersistentStateProvider from 'paraviewweb/src/InfoViz/Core/PersistentStateProvider';
 
+// function listToPair(list = []) {
+//   const size = list.length;
+//   const pairList = [];
+//   list.forEach((name, idx) => {
+//     for (let i = idx; i < size; i++) {
+//       pairList.push([name, list[i]]);
+//     }
+//   });
+//   return pairList;
+// }
+
 function divvyProvider(publicAPI, model) {
   model.client.onReady(() => {
     const fieldList = model.client.getFieldList();
@@ -29,12 +40,50 @@ function divvyProvider(publicAPI, model) {
 
     // whenever the list of active fields change, update our
     // 2D histogram subscriptions
-    publicAPI.onFieldChange((field) => {
-      const activeFieldNames = publicAPI.getActiveFieldNames();
-      if (activeFieldNames.length > 1) {
-        console.log(activeFieldNames);
+    // publicAPI.onFieldChange((field) => {
+    //   const activeFieldNames = publicAPI.getActiveFieldNames();
+    //   if (activeFieldNames.length > 1) {
+    //     console.log(activeFieldNames);
+    //     model.client.serverAPI().requestHistograms({ hist2D: listToPair(activeFieldNames) });
+    //   }
+    // });
+    publicAPI.onHistogram2DSubscriptionChange((request) => {
+      const { id, variables, metadata } = request;
+      // { id: 0, variables: [["2 point shots percentage", "2 point shots percentage"]],
+      // metadata: {numberOfBins: 32, partial: false, symmetric: true}, }
+      console.log(id, variables, metadata);
+      if (variables.length > 0) {
+        model.client.serverAPI().requestHistograms({ hist2D: variables });
       }
     });
+    publicAPI.onHistogram1DSubscriptionChange((request) => {
+      const { id, variables, metadata } = request;
+      // { id: 0, variables: ["2 point shots percentage", "2 point shots percentage"],
+      // metadata: {numberOfBins: 32, partial: false, symmetric: true}, }
+      console.log(id, variables, metadata);
+      if (variables.length > 0) {
+        model.client.serverAPI().requestHistograms({ hist1D: variables });
+      }
+    });
+
+    model.subscriptions.push(model.client.serverAPI().subscribe2DHistogram((data) => {
+      if (Array.isArray(data)) {
+        data.forEach((hist) => {
+          publicAPI.setHistogram2D(hist.data);
+        });
+      } else {
+        console.error('Non array response from subscribe2DHistogram');
+      }
+    }));
+    model.subscriptions.push(model.client.serverAPI().subscribe1DHistogram((data) => {
+      if (Array.isArray(data)) {
+        data.forEach((hist) => {
+          publicAPI.setHistogram1D(hist.data);
+        });
+      } else {
+        console.error('Non array response from subscribe1DHistogram');
+      }
+    }));
   });
 
   publicAPI.setHistogram2dProvider(publicAPI);

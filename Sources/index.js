@@ -18,7 +18,7 @@ import ParallelCoordinates from 'paraviewweb/src/InfoViz/Native/ParallelCoordina
 
 import sizeHelper from 'paraviewweb/src/Common/Misc/SizeHelper';
 
-import dataModel from './state.json';
+// import dataModel from './state.json';
 
 import DivvyProvider from './provider';
 import DivvyClient from './client';
@@ -28,8 +28,8 @@ container.style.height = '100vh';
 container.style.width = '100vw';
 
 const client = DivvyClient.newInstance();
-dataModel.client = client;
-const provider = DivvyProvider.newInstance(dataModel);
+// dataModel.client = client;
+const provider = DivvyProvider.newInstance({ client });
 
 // connect to the server
 client.connect();
