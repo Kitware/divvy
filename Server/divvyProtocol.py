@@ -36,8 +36,9 @@ NUMERIC_TYPES = {
 # Respond to all RPC requests and publish data to a Divvy client
 # =============================================================================
 class DivvyProtocol(ParaViewWebProtocol):
-  def __init__(self):
+  def __init__(self, inputFile):
     super(DivvyProtocol, self).__init__()
+    self.inputFile = inputFile
     self.dataTable = None
     self.hist2DCache = {};
     self.hist1DCache = {};
@@ -49,7 +50,7 @@ class DivvyProtocol(ParaViewWebProtocol):
       # read a data file
       r = vtk.vtkDelimitedTextReader()
       r.DetectNumericColumnsOn()
-      r.SetFileName('nba13-14.csv')
+      r.SetFileName(self.inputFile)
       r.SetHaveHeaders(True)
       r.Update()
       self.dataTable = r.GetOutput()
