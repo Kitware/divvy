@@ -38,6 +38,17 @@ function divvyProvider(publicAPI, model) {
     });
     publicAPI.assignLegend(['colors', 'shapes']);
 
+    // activate scoring gui
+    const scores = [
+      { name: 'Interesting', color: '#66c2a5', value: 1 },
+      { name: 'Exciting', color: '#fc8d62', value: 5 },
+      { name: 'Neutral', color: '#8da0cb', value: 0 },
+      { name: 'Bland', color: '#e78ac3', value: -2 },
+      { name: 'Other', color: '#a6d854', value: 2 },
+    ];
+    publicAPI.setScores(scores);
+    publicAPI.setDefaultScore(0);
+
     // whenever the list of active fields change, update our
     // 2D histogram subscriptions
     // publicAPI.onFieldChange((field) => {
@@ -51,16 +62,28 @@ function divvyProvider(publicAPI, model) {
       const { id, variables, metadata } = request;
       // { id: 0, variables: [["2 point shots percentage", "2 point shots percentage"]],
       // metadata: {numberOfBins: 32, partial: false, symmetric: true}, }
-      console.log(id, variables, metadata);
       if (variables.length > 0) {
-        model.client.serverAPI().requestHistograms({ hist2D: variables });
+        const needList = [];
+        variables.forEach((pair) => {
+          if (!publicAPI.hasHistogram2D(request, pair)) {
+            needList.push(pair);
+          }
+        });
+        if (needList.length > 0) {
+          console.log(id, variables, metadata);
+          model.client.serverAPI().requestHistograms({ hist2D: needList });
+        }
+      }
+      // Shortcut hack - we know id 1 is parallel coords. It needs selection histos
+      if (id === 1) {
+        model.client.serverAPI().requestAnnotationHistograms({ hist2D: variables });
       }
     });
     publicAPI.onHistogram1DSubscriptionChange((request) => {
-      const { id, variables, metadata } = request;
+      const { variables } = request;
       // { id: 0, variables: ["2 point shots percentage", "2 point shots percentage"],
       // metadata: {numberOfBins: 32, partial: false, symmetric: true}, }
-      console.log(id, variables, metadata);
+      // console.log(id, variables, metadata);
       if (variables.length > 0) {
         model.client.serverAPI().requestHistograms({ hist1D: variables });
       }
@@ -69,7 +92,12 @@ function divvyProvider(publicAPI, model) {
     model.subscriptions.push(model.client.serverAPI().subscribe2DHistogram((data) => {
       if (Array.isArray(data)) {
         data.forEach((hist) => {
-          publicAPI.setHistogram2D(hist.data);
+          if (hist.selection) {
+            // a new range annotation will generate 2d histograms of the selection.
+            publicAPI.setSelectionData(hist);
+          } else {
+            publicAPI.setHistogram2D(hist.data);
+          }
         });
       } else {
         console.error('Non array response from subscribe2DHistogram');
@@ -84,12 +112,29 @@ function divvyProvider(publicAPI, model) {
         console.error('Non array response from subscribe1DHistogram');
       }
     }));
+    publicAPI.onAnnotationChange((annotation) => {
+      // Capture any partition annotation
+      if (annotation.selection.type === 'partition') {
+        model.fieldPartitions[annotation.selection.partition.variable] = annotation;
+      }
+
+      model.client.serverAPI().updateAnnotation(annotation)
+        .then(
+          (result) => {
+            console.log('updateAnnotation result', result);
+          },
+          (code, reason) => {
+            console.error('updateAnnotation failed: ', code, reason);
+          },
+        );
+    });
   });
 
   publicAPI.setHistogram2dProvider(publicAPI);
 }
 
 const DEFAULT_VALUES = {
+  fieldPartitions: {},
 };
 
 // const toggleView = new ToggleControl(green, red);

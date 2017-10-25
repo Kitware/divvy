@@ -44,6 +44,7 @@ client.onReady(() => {
   const diag = MutualInformationDiagram.newInstance({ provider });
 
   const parallelCoordinates = ParallelCoordinates.newInstance({ provider });
+  parallelCoordinates.propagateAnnotationInsteadOfSelection(true, 0, 1);
 
   const viewports = {
     Fields: {
