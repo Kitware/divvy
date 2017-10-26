@@ -122,6 +122,48 @@ class DivvyProtocol(ParaViewWebProtocol):
         result[i,j] += 1
     return result
 
+  def format2DHistogramResult(self, pair, hist2D, annot=None, inVtkX=None, inVtkY=None, inXrng=None, inYrng=None):
+    numBins = self.numBins
+    vtkX = inVtkX if inVtkX else self.dataTable.GetColumnByName(pair[0])
+    vtkY = inVtkY if inVtkY else self.dataTable.GetColumnByName(pair[1])
+    xrng = inXrng if inXrng else vtkX.GetRange()
+    yrng = inYrng if inYrng else vtkY.GetRange()
+    dx = float(xrng[1] - xrng[0]) / numBins
+    dy = float(yrng[1] - yrng[0]) / numBins
+    # binArray = [ {
+    #     'x': xrng[0] + (dx * i),
+    #     'y': yrng[0] + (dy * j),
+    #     'count': k } for i, j, k in hist2Ds ]
+    # result = {
+    #     'x': { 'delta': dx, 'extent': xrng, 'name': pair[0], },
+    #     'y': { 'delta': dy, 'extent': yrng, 'name': pair[1], },
+    #     'bins': binArray,
+    #     'numberOfBins': numBins,
+    #     }
+    biter = np.nditer(hist2D, flags=['multi_index'])
+    result = {
+      'x': {'name': pair[0], 'extent':xrng, 'delta':dx, 'mtime': vtkX.GetMTime() },
+      'y': {'name': pair[1], 'extent':yrng, 'delta':dy, 'mtime': vtkY.GetMTime() },
+      'numberOfBins': numBins,
+      'bins': [ {
+                  'x':xrng[0] + biter.multi_index[0] * dx,
+                  'y':yrng[0] + biter.multi_index[1] * dy,
+                  'count':int(bval)
+              } for bval in biter if bval > 0 ],
+    }
+    if annot:
+      result['annotationInfo'] = {
+        'annotation': annot['id'] if 'id' in annot else 'unknown',
+        'annotationGeneration': annot['generation'],
+        'selectionGeneration': annot['selection']['generation']
+      }
+      annotScore = annot['score'][0] if len(annot['score']) > 0 else 0
+      result['role'] = { 'type': 'selected', 'score': annotScore }
+    else:
+      result['role'] = { 'type': 'complete', 'score': -1 }
+    return result
+
+
   def get2DHistogram(self, pair):
     numBins = self.numBins
     swap = pair[1] < pair[0]
@@ -135,25 +177,26 @@ class DivvyProtocol(ParaViewWebProtocol):
     if swap:
       hist2D = hist2D.T
     # Client expects a sparse representation => hist2Ds
-    m, n = np.where(hist2D > 0)
-    hist2Ds = np.array([m, n, hist2D[m,n]]).T
-    # Format bins for client
-    vtkX = self.dataTable.GetColumnByName(pair[0])
-    vtkY = self.dataTable.GetColumnByName(pair[1])
-    xrng = vtkX.GetRange()
-    yrng = vtkY.GetRange()
-    dx = float(xrng[1] - xrng[0]) / numBins
-    dy = float(yrng[1] - yrng[0]) / numBins
-    binArray = [ {
-        'x': xrng[0] + (dx * i),
-        'y': yrng[0] + (dy * j),
-        'count': k } for i, j, k in hist2Ds ]
-    result = {
-        'x': { 'delta': dx, 'extent': xrng, 'name': pair[0], },
-        'y': { 'delta': dy, 'extent': yrng, 'name': pair[1], },
-        'bins': binArray,
-        'numberOfBins': numBins,
-        }
+    result = self.format2DHistogramResult(pair, hist2D)
+    # m, n = np.where(hist2D > 0)
+    # hist2Ds = np.array([m, n, hist2D[m,n]]).T
+    # # Format bins for client
+    # vtkX = self.dataTable.GetColumnByName(pair[0])
+    # vtkY = self.dataTable.GetColumnByName(pair[1])
+    # xrng = vtkX.GetRange()
+    # yrng = vtkY.GetRange()
+    # dx = float(xrng[1] - xrng[0]) / numBins
+    # dy = float(yrng[1] - yrng[0]) / numBins
+    # binArray = [ {
+    #     'x': xrng[0] + (dx * i),
+    #     'y': yrng[0] + (dy * j),
+    #     'count': k } for i, j, k in hist2Ds ]
+    # result = {
+    #     'x': { 'delta': dx, 'extent': xrng, 'name': pair[0], },
+    #     'y': { 'delta': dy, 'extent': yrng, 'name': pair[1], },
+    #     'bins': binArray,
+    #     'numberOfBins': numBins,
+    #     }
     return result
 
   # given a list of pairs of names from self.fields, calc and publish 2D histograms
@@ -183,6 +226,8 @@ class DivvyProtocol(ParaViewWebProtocol):
   def updateAnnotation(self, annot):
     numBins = self.numBins
     print(annot)
+    prevAnnot = self.activeAnnot
+    self.activeAnnot = annot
     # {
     #   'id': '301fc0e7-80fe-4f3d-9d77-bcffa8f8f3bc', 'generation': 2,
     #   'selection': {
@@ -196,7 +241,19 @@ class DivvyProtocol(ParaViewWebProtocol):
     #   },
     #   'score': [0], 'weight': 1, 'rationale': '', 'name': 'CH4 (range)', 'readOnly': False
     # }
-
+    # {
+    # 'id': 'cb1178c0-1932-4856-9d58-4ca042a2e6d3', 'generation': 19,
+    # 'selection': {
+    #   'type': 'partition', 'generation': 19,
+    #   'partition': {
+    #     'variable': 'CH4', 'dividers': [{
+    #       'value': 0.00018690694444444442, 'uncertainty': 0, 'closeToLeft': False}, {
+    #       'value': 0.0007313749999999999, 'uncertainty': 0, 'closeToLeft': False}, {
+    #       'value': 0.0010320513888888887, 'uncertainty': 0, 'closeToLeft': False}
+    #     ]}
+    #   },
+    # 'score': [3, 0, 1, 4], 'weight': 1, 'rationale': '', 'name': 'CH4 (partition)', 'readOnly': False
+    # }
     selectionType = annot['selection']['type']
     if selectionType == 'range':
       myVars = annot['selection']['range']['variables']
@@ -223,6 +280,7 @@ class DivvyProtocol(ParaViewWebProtocol):
       print('got partition')
     else:
       print('empty selection')
+      self.selectedRows = np.zeros(self.numRows)
 
     if self.lastHist2DList:
       # find the indices of the selected rows (flagged with 1)
@@ -239,24 +297,7 @@ class DivvyProtocol(ParaViewWebProtocol):
         dy = float(yrng[1] - yrng[0]) / numBins
         # sub-set the columns to the selected rows, then calc histogram.
         bins = np.histogram2d(x[selIndices], y[selIndices], bins=numBins, range=[xrng, yrng])[0]
-        biter = np.nditer(bins, flags=['multi_index'])
-        annotScore = annot['score'][0] if len(annot['score']) > 0 else 0
-        result = {
-          'annotationInfo': {
-            'annotation': annot['id'] if 'id' in annot else 'unknown',
-            'annotationGeneration': annot['generation'],
-            'selectionGeneration': annot['selection']['generation']
-          },
-          'role': { 'selected': True, 'score': annotScore },
-          'x': {'name': pair[0], 'extent':xrng, 'delta':dx, 'mtime': vtkX.GetMTime() },
-          'y': {'name': pair[1], 'extent':yrng, 'delta':dy, 'mtime': vtkY.GetMTime() },
-          'numberOfBins': numBins,
-          'bins': [ {
-                      'x':xrng[0] + biter.multi_index[0] * dx,
-                      'y':yrng[0] + biter.multi_index[1] * dy,
-                      'count':int(bval)
-                  } for bval in biter if bval > 0 ],
-        }
+        result = self.format2DHistogramResult(pair, bins, annot, vtkX, vtkY, xrng, yrng)
         self.publish('divvy.histogram2D.push', { 'type': 'histogram2d', 'data': result, 'selection': True, })
 
     return { 'success': True }
