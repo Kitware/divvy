@@ -23,8 +23,10 @@ function divvyClient(publicAPI, model) {
             ({
               getFields: () => session.call('divvy.fields.get'),
               requestHistograms: request => session.call('divvy.histograms.request', [request]),
+              requestAnnotationHistograms: request => session.call('divvy.histograms.annotation.request', [request]),
               subscribe1DHistogram: callback => session.subscribe('divvy.histogram1D.push', callback),
               subscribe2DHistogram: callback => session.subscribe('divvy.histogram2D.push', callback),
+              updateAnnotation: annot => session.call('divvy.annotation.update', [annot]),
             }),
         },
       );
