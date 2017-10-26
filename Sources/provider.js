@@ -78,7 +78,7 @@ function divvyProvider(publicAPI, model) {
       if (id === 1) {
         model.client.serverAPI().requestAnnotationHistograms({ hist2D: variables });
         // if there's an annotation, re-calc its histograms.
-        publicAPI.fireAnnotationChange(publicAPI.getAnnotation());
+        if (publicAPI.getAnnotation()) publicAPI.fireAnnotationChange(publicAPI.getAnnotation());
       }
     });
     publicAPI.onHistogram1DSubscriptionChange((request) => {

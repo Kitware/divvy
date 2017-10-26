@@ -122,34 +122,26 @@ class DivvyProtocol(ParaViewWebProtocol):
         result[i,j] += 1
     return result
 
-  def format2DHistogramResult(self, pair, hist2D, annot=None, inVtkX=None, inVtkY=None, inXrng=None, inYrng=None):
+  def format2DHistogramResult(self, pair, hist2D, annot=None, inScore=None, inVtkX=None, inVtkY=None, inXrng=None, inYrng=None):
     numBins = self.numBins
     vtkX = inVtkX if inVtkX else self.dataTable.GetColumnByName(pair[0])
     vtkY = inVtkY if inVtkY else self.dataTable.GetColumnByName(pair[1])
     xrng = inXrng if inXrng else vtkX.GetRange()
     yrng = inYrng if inYrng else vtkY.GetRange()
+    score = inScore if inScore else 0
     dx = float(xrng[1] - xrng[0]) / numBins
     dy = float(yrng[1] - yrng[0]) / numBins
-    # binArray = [ {
-    #     'x': xrng[0] + (dx * i),
-    #     'y': yrng[0] + (dy * j),
-    #     'count': k } for i, j, k in hist2Ds ]
-    # result = {
-    #     'x': { 'delta': dx, 'extent': xrng, 'name': pair[0], },
-    #     'y': { 'delta': dy, 'extent': yrng, 'name': pair[1], },
-    #     'bins': binArray,
-    #     'numberOfBins': numBins,
-    #     }
-    biter = np.nditer(hist2D, flags=['multi_index'])
+
+    histIter = np.nditer(hist2D, flags=['multi_index'])
     result = {
       'x': {'name': pair[0], 'extent':xrng, 'delta':dx, 'mtime': vtkX.GetMTime() },
       'y': {'name': pair[1], 'extent':yrng, 'delta':dy, 'mtime': vtkY.GetMTime() },
       'numberOfBins': numBins,
       'bins': [ {
-                  'x':xrng[0] + biter.multi_index[0] * dx,
-                  'y':yrng[0] + biter.multi_index[1] * dy,
+                  'x':xrng[0] + histIter.multi_index[0] * dx,
+                  'y':yrng[0] + histIter.multi_index[1] * dy,
                   'count':int(bval)
-              } for bval in biter if bval > 0 ],
+              } for bval in histIter if bval > 0 ],
     }
     if annot:
       result['annotationInfo'] = {
@@ -157,8 +149,7 @@ class DivvyProtocol(ParaViewWebProtocol):
         'annotationGeneration': annot['generation'],
         'selectionGeneration': annot['selection']['generation']
       }
-      annotScore = annot['score'][0] if len(annot['score']) > 0 else 0
-      result['role'] = { 'type': 'selected', 'score': annotScore }
+      result['role'] = { 'type': 'selected', 'score': score }
     else:
       result['role'] = { 'type': 'complete', 'score': -1 }
     return result
@@ -178,25 +169,6 @@ class DivvyProtocol(ParaViewWebProtocol):
       hist2D = hist2D.T
     # Client expects a sparse representation => hist2Ds
     result = self.format2DHistogramResult(pair, hist2D)
-    # m, n = np.where(hist2D > 0)
-    # hist2Ds = np.array([m, n, hist2D[m,n]]).T
-    # # Format bins for client
-    # vtkX = self.dataTable.GetColumnByName(pair[0])
-    # vtkY = self.dataTable.GetColumnByName(pair[1])
-    # xrng = vtkX.GetRange()
-    # yrng = vtkY.GetRange()
-    # dx = float(xrng[1] - xrng[0]) / numBins
-    # dy = float(yrng[1] - yrng[0]) / numBins
-    # binArray = [ {
-    #     'x': xrng[0] + (dx * i),
-    #     'y': yrng[0] + (dy * j),
-    #     'count': k } for i, j, k in hist2Ds ]
-    # result = {
-    #     'x': { 'delta': dx, 'extent': xrng, 'name': pair[0], },
-    #     'y': { 'delta': dy, 'extent': yrng, 'name': pair[1], },
-    #     'bins': binArray,
-    #     'numberOfBins': numBins,
-    #     }
     return result
 
   # given a list of pairs of names from self.fields, calc and publish 2D histograms
@@ -221,6 +193,8 @@ class DivvyProtocol(ParaViewWebProtocol):
     if 'hist2D' in request:
       self.lastHist2DList = request['hist2D']
     return { 'success': True }
+
+
 
   @exportRpc('divvy.annotation.update')
   def updateAnnotation(self, annot):
@@ -257,6 +231,8 @@ class DivvyProtocol(ParaViewWebProtocol):
     selectionType = annot['selection']['type']
     if selectionType == 'range':
       myVars = annot['selection']['range']['variables']
+      annotScore = annot['score'][0] if len(annot['score']) > 0 else 0
+
       colResult = []
       for var in myVars:
         # retrieve the column
@@ -273,31 +249,63 @@ class DivvyProtocol(ParaViewWebProtocol):
           insideInterval.append(np.all([interval[0] <= col, col <= interval[1]], axis=0))
         # data can be inside any interval in this column
         colResult.append(np.any(insideInterval, axis=0))
-      # Row must be inside all columns to be selected. Mult by 1 to convert True/False to 1/0
-      self.selectedRows = np.all(colResult, axis=0) * 1
-      print('Selected row count:', np.sum(self.selectedRows > 0))
+      # Row must be inside all columns to be selected. Convert True/False to 1/0
+      labeledRows = np.all(colResult, axis=0).astype(np.uint8)
+      # Change selected rows to have their score as a label. If score ==0, need to flip.
+      if annotScore == 0:
+        labeledRows = (labeledRows * -1) + 1
+      else:
+        labeledRows *= annotScore
+      self.selectedRows = { 'score': [annotScore], 'data': labeledRows.astype(np.uint8) }
+      print('Selected row count:', np.sum(self.selectedRows['data'] == annotScore))
     elif selectionType == 'partition':
-      print('got partition')
+      # partitions label all the rows in a column with their scores.
+      var = annot['selection']['partition']['variable']
+      # retrieve the column
+      vtkcol = self.dataTable.GetColumnByName(var);
+
+      if not vtkcol:
+        print('missing data column', vtkcol)
+        return { 'success': False }
+
+      col = vtk_to_numpy(vtkcol)
+      dividers = annot['selection']['partition']['dividers']
+      divVals = [d['value'] for d in dividers]
+
+      # first determine which partition each row is in. For each divider, see if a row is underneath, and add to it's count
+      # flip (via subtract) to label them inside partition 1, 2, 3 ...
+      # TODO handle 'closeToLeft', which will use <=
+      labeledRows = np.uint8(len(divVals) + 1) - np.sum([col < val for val in divVals], axis=0).astype(np.uint8)
+      annotScores = annot['score']
+      if len(annotScores) == len(divVals) + 1:
+        # convert the region label to a score, via a map.
+        scoreMap = { (i + 1): annotScores[i] for i in range(len(annotScores)) }
+        labeledRows = np.array(list(map(lambda x: scoreMap[x] if x in scoreMap else 0, labeledRows))).astype(np.uint8)
+      self.selectedRows = { 'score': np.unique(annotScores).tolist(), 'data': labeledRows }
+
     else:
       print('empty selection')
-      self.selectedRows = np.zeros(self.numRows)
+      self.selectedRows = { 'score': [-1], 'data': np.zeros(self.numRows) }
 
+    # if someone is listening to hist2D selections....
     if self.lastHist2DList:
-      # find the indices of the selected rows (flagged with 1)
-      selIndices = np.where(np.isin(self.selectedRows, [1]))
-      for pair in self.lastHist2DList:
+      # for range selections, this happens once. For partitions, several times.
+      for score in self.selectedRows['score']:
+        # find the indices of the selected rows (flagged with score)
+        selIndices = np.where(np.isin(self.selectedRows['data'], [score]))
+        for pair in self.lastHist2DList:
 
-        vtkX = self.dataTable.GetColumnByName(pair[0])
-        vtkY = self.dataTable.GetColumnByName(pair[1])
-        xrng = vtkX.GetRange()
-        yrng = vtkY.GetRange()
-        x = vtk_to_numpy(vtkX)
-        y = vtk_to_numpy(vtkY)
-        dx = float(xrng[1] - xrng[0]) / numBins
-        dy = float(yrng[1] - yrng[0]) / numBins
-        # sub-set the columns to the selected rows, then calc histogram.
-        bins = np.histogram2d(x[selIndices], y[selIndices], bins=numBins, range=[xrng, yrng])[0]
-        result = self.format2DHistogramResult(pair, bins, annot, vtkX, vtkY, xrng, yrng)
-        self.publish('divvy.histogram2D.push', { 'type': 'histogram2d', 'data': result, 'selection': True, })
+          vtkX = self.dataTable.GetColumnByName(pair[0])
+          vtkY = self.dataTable.GetColumnByName(pair[1])
+          xrng = vtkX.GetRange()
+          yrng = vtkY.GetRange()
+          x = vtk_to_numpy(vtkX)
+          y = vtk_to_numpy(vtkY)
+          dx = float(xrng[1] - xrng[0]) / numBins
+          dy = float(yrng[1] - yrng[0]) / numBins
+          # sub-set the columns to the selected rows, then calc histogram.
+          bins = np.histogram2d(x[selIndices], y[selIndices], bins=numBins, range=[xrng, yrng])[0]
+          result = self.format2DHistogramResult(pair, bins, annot, score, vtkX, vtkY, xrng, yrng)
+          self.publish('divvy.histogram2D.push', { 'type': 'histogram2d', 'data': result, 'selection': True, })
 
     return { 'success': True }
