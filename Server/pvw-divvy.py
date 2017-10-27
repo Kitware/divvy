@@ -59,7 +59,6 @@ class _DivvyServer(pv_wslink.PVServerProtocol):
 
     def initialize(self):
         # Bring used components
-        self.registerVtkWebProtocol(pv_protocols.ParaViewWebFileListing(_DivvyServer.dataDir, "Home"))
         self.registerVtkWebProtocol(DivvyProtocol(_DivvyServer.fileToLoad))
         self.updateSecret(_DivvyServer.authKey)
 
