@@ -77,6 +77,8 @@ function divvyProvider(publicAPI, model) {
       // Shortcut hack - we know id 1 is parallel coords. It needs selection histos
       if (id === 1) {
         model.client.serverAPI().requestAnnotationHistograms({ hist2D: variables });
+        // if there's an annotation, re-calc its histograms.
+        if (publicAPI.getAnnotation()) publicAPI.fireAnnotationChange(publicAPI.getAnnotation());
       }
     });
     publicAPI.onHistogram1DSubscriptionChange((request) => {
@@ -121,7 +123,7 @@ function divvyProvider(publicAPI, model) {
       model.client.serverAPI().updateAnnotation(annotation)
         .then(
           (result) => {
-            console.log('updateAnnotation result', result);
+            // console.log('updateAnnotation result', result);
           },
           (code, reason) => {
             console.error('updateAnnotation failed: ', code, reason);
