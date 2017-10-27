@@ -5,16 +5,16 @@ import CompositeClosureHelper from 'paraviewweb/src/Common/Core/CompositeClosure
 import SmartConnect from 'wslink/src/SmartConnect';
 import ParaViewWebClient from 'paraviewweb/src/IO/WebSocket/ParaViewWebClient';
 
-
 function divvyClient(publicAPI, model) {
   // private variables
   let ready = false;
   const readyCallbacks = [];
 
-  publicAPI.connect = () => {
-    const config = { sessionURL: `ws://localhost:${model.port}/ws` };
+  publicAPI.connect = (userConfig) => {
+    const config = Object.assign({ application: 'divvy' }, userConfig);
     const smartConnect = SmartConnect.newInstance({ config });
     smartConnect.onConnectionReady((connection) => {
+      model.connection = connection;
       model.pvwClient = ParaViewWebClient.createClient(
         connection,
         ['MouseHandler', 'ViewPort', 'ViewPortImageDelivery'],
@@ -44,6 +44,13 @@ function divvyClient(publicAPI, model) {
     smartConnect.connect();
   };
 
+  publicAPI.exit = (timeout = 60) => {
+    if (model.connection) {
+      model.connection.destroy(timeout);
+      model.connection = null;
+    }
+  };
+
   publicAPI.serverAPI = () => (model.pvwClient.Divvy);
 
   publicAPI.onReady = (callback) => {
@@ -57,7 +64,6 @@ function divvyClient(publicAPI, model) {
 
 const DEFAULT_VALUES = {
   fieldList: null,
-  port: 1234,
   pvwClient: null,
 };
 

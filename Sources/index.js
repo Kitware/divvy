@@ -2,22 +2,18 @@
 import 'normalize.css';
 import 'babel-polyfill';
 
-import Workbench from 'paraviewweb/src/Component/Native/Workbench';
-import ToggleControl from 'paraviewweb/src/Component/Native/ToggleControl';
-import Spacer from 'paraviewweb/src/Component/Native/Spacer';
+import AnnotationEditorWidget from 'paraviewweb/src/React/Widgets/AnnotationEditorWidget';
 import Composite from 'paraviewweb/src/Component/Native/Composite';
-import ReactAdapter from 'paraviewweb/src/Component/React/ReactAdapter';
-import WorkbenchController from 'paraviewweb/src/Component/React/WorkbenchController';
-
-// import CompositeClosureHelper from 'paraviewweb/src/Common/Core/CompositeClosureHelper';
-
-import HistogramSelector from 'paraviewweb/src/InfoViz/Native/HistogramSelector';
 import FieldSelector from 'paraviewweb/src/InfoViz/Native/FieldSelector';
+import HistogramSelector from 'paraviewweb/src/InfoViz/Native/HistogramSelector';
 import MutualInformationDiagram from 'paraviewweb/src/InfoViz/Native/MutualInformationDiagram';
 import ParallelCoordinates from 'paraviewweb/src/InfoViz/Native/ParallelCoordinates';
-import AnnotationEditorWidget from 'paraviewweb/src/React/Widgets/AnnotationEditorWidget';
-
-import sizeHelper from 'paraviewweb/src/Common/Misc/SizeHelper';
+import ReactAdapter from 'paraviewweb/src/Component/React/ReactAdapter';
+import SizeHelper from 'paraviewweb/src/Common/Misc/SizeHelper';
+import Spacer from 'paraviewweb/src/Component/Native/Spacer';
+import ToggleControl from 'paraviewweb/src/Component/Native/ToggleControl';
+import Workbench from 'paraviewweb/src/Component/Native/Workbench';
+import WorkbenchController from 'paraviewweb/src/Component/React/WorkbenchController';
 
 // import dataModel from './state.json';
 
@@ -31,9 +27,6 @@ container.style.width = '100vw';
 const client = DivvyClient.newInstance();
 // dataModel.client = client;
 const provider = DivvyProvider.newInstance({ client });
-
-// connect to the server
-client.connect();
 
 // don't lay out the initial controls until field list is back.
 client.onReady(() => {
@@ -140,10 +133,26 @@ client.onReady(() => {
   });
 
   // Listen to window resize
-  sizeHelper.onSizeChange(() => {
+  SizeHelper.onSizeChange(() => {
     mainComponent.resize();
   });
-  sizeHelper.startListening();
+  SizeHelper.startListening();
 
-  sizeHelper.triggerChange();
+  SizeHelper.triggerChange();
 });
+
+// ----------------------------------------------------------------------------
+// Exposed API
+// ----------------------------------------------------------------------------
+
+export function connect(userConfig) {
+  client.connect(userConfig);
+}
+
+export function autoStopServer(timeout = 60) {
+  function exitOnClose() {
+    client.exit(timeout);
+  }
+  window.addEventListener('unload', exitOnClose);
+  window.addEventListener('beforeunload', exitOnClose);
+}
