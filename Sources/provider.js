@@ -123,7 +123,7 @@ function divvyProvider(publicAPI, model) {
       model.client.serverAPI().updateAnnotation(annotation)
         .then(
           (result) => {
-            console.log('updateAnnotation result', result);
+            // console.log('updateAnnotation result', result);
           },
           (code, reason) => {
             console.error('updateAnnotation failed: ', code, reason);

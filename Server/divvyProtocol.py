@@ -275,7 +275,10 @@ class DivvyProtocol(ParaViewWebProtocol):
       # first determine which partition each row is in. For each divider, see if a row is underneath, and add to it's count
       # flip (via subtract) to label them inside partition 1, 2, 3 ...
       # TODO handle 'closeToLeft', which will use <=
-      labeledRows = np.uint8(len(divVals) + 1) - np.sum([col < val for val in divVals], axis=0).astype(np.uint8)
+      if len(divVals):
+        labeledRows = np.uint8(len(divVals) + 1) - np.sum([col < val for val in divVals], axis=0).astype(np.uint8)
+      else:
+        labeledRows = np.ones(len(col)).astype(np.uint8)
       annotScores = annot['score']
       if len(annotScores) == len(divVals) + 1:
         # convert the region label to a score, via a map.

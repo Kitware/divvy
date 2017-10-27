@@ -15,6 +15,7 @@ import HistogramSelector from 'paraviewweb/src/InfoViz/Native/HistogramSelector'
 import FieldSelector from 'paraviewweb/src/InfoViz/Native/FieldSelector';
 import MutualInformationDiagram from 'paraviewweb/src/InfoViz/Native/MutualInformationDiagram';
 import ParallelCoordinates from 'paraviewweb/src/InfoViz/Native/ParallelCoordinates';
+import AnnotationEditorWidget from 'paraviewweb/src/React/Widgets/AnnotationEditorWidget';
 
 import sizeHelper from 'paraviewweb/src/Common/Misc/SizeHelper';
 
@@ -46,6 +47,26 @@ client.onReady(() => {
   const parallelCoordinates = ParallelCoordinates.newInstance({ provider });
   parallelCoordinates.propagateAnnotationInsteadOfSelection(true, 0, 1);
 
+  const annotationWidgetProps = {
+    annotation: null,
+    scores: provider.getScores(),
+    ranges: provider.getFieldNames().reduce((ranges, field) => {
+      // Dict: key is field name, value is the field's range [min, max]
+      ranges[field] = provider.getField(field).range;
+      return ranges;
+    }, {}),
+    onChange: (annot, editDone) => {
+      annotationWidgetProps.annotation = annot;
+      // eslint-disable-next-line no-use-before-define
+      annotEditor.render();
+      if (editDone) provider.setAnnotation(annot);
+    },
+    getLegend: provider.getLegend,
+    scroll: true,
+  };
+  const annotEditor = new ReactAdapter(AnnotationEditorWidget, annotationWidgetProps);
+
+
   const viewports = {
     Fields: {
       component: fieldSelector,
@@ -63,6 +84,11 @@ client.onReady(() => {
     'Parallel Coordinates': {
       component: parallelCoordinates,
       viewport: 3,
+    },
+    'Annotation Editor': {
+      component: annotEditor,
+      viewport: -1,
+      scroll: true,
     },
   };
 
@@ -105,6 +131,12 @@ client.onReady(() => {
       component ? component.color : 'none', index, count,
       index === -1 || index >= count ? 'hidden' : 'visible',
     );
+  });
+
+  // make sure annot editor hears about annot changes
+  provider.onAnnotationChange((annot) => {
+    annotationWidgetProps.annotation = annot;
+    annotEditor.render();
   });
 
   // Listen to window resize
