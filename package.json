@@ -62,7 +62,7 @@
         }
     ],
     "bin": {
-        "Divvy": "./Server/pvw-divvy.py"
+        "Divvy": "./CLI/pvw-divvy-cli.js"
     },
     "nyc": {
         "include": [
