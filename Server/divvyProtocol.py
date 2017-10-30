@@ -76,10 +76,11 @@ class DivvyProtocol(ParaViewWebProtocol):
   def calc1DHistogram(self, vtkX, xrng, numBins):
     result = np.zeros(numBins)
     px = vtk_to_numpy(vtkX)
-    ix = np.clip(np.floor((px - xrng[0]) * numBins / (xrng[1] - xrng[0])).astype(int), 0, numBins - 1)
-    indices, counts = np.unique(ix, return_counts = True)
-    for i in range(len(indices)):
-      result[indices[i]] = counts[i]
+    # ix = np.clip(np.floor((px - xrng[0]) * numBins / (xrng[1] - xrng[0])).astype(int), 0, numBins - 1)
+    # indices, counts = np.unique(ix, return_counts = True)
+    # for i in range(len(indices)):
+    #   result[indices[i]] = counts[i]
+    result = np.histogram(px, bins=numBins)[0]
     # make it json serializable
     return result.tolist()
 
@@ -295,7 +296,7 @@ class DivvyProtocol(ParaViewWebProtocol):
       # for range selections, this happens once. For partitions, several times.
       for score in self.selectedRows['score']:
         # find the indices of the selected rows (flagged with score)
-        selIndices = np.where(np.isin(self.selectedRows['data'], [score]))
+        selIndices = np.where(np.in1d(self.selectedRows['data'], [score]))
         for pair in self.lastHist2DList:
 
           vtkX = self.dataTable.GetColumnByName(pair[0])
