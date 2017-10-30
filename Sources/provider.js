@@ -14,19 +14,9 @@ import SelectionProvider from 'paraviewweb/src/InfoViz/Core/SelectionProvider';
 import MutualInformationProvider from 'paraviewweb/src/InfoViz/Core/MutualInformationProvider';
 // import PersistentStateProvider from 'paraviewweb/src/InfoViz/Core/PersistentStateProvider';
 
-// function listToPair(list = []) {
-//   const size = list.length;
-//   const pairList = [];
-//   list.forEach((name, idx) => {
-//     for (let i = idx; i < size; i++) {
-//       pairList.push([name, list[i]]);
-//     }
-//   });
-//   return pairList;
-// }
-
 function divvyProvider(publicAPI, model) {
   model.client.onReady(() => {
+    // model.client.setBusyListener(publicAPI.fireBusy);
     const fieldList = model.client.getFieldList();
     Object.keys(fieldList).forEach((field) => {
       publicAPI.addField(field, fieldList[field]);
@@ -49,18 +39,11 @@ function divvyProvider(publicAPI, model) {
     publicAPI.setScores(scores);
     publicAPI.setDefaultScore(0);
 
-    // whenever the list of active fields change, update our
-    // 2D histogram subscriptions
-    // publicAPI.onFieldChange((field) => {
-    //   const activeFieldNames = publicAPI.getActiveFieldNames();
-    //   if (activeFieldNames.length > 1) {
-    //     console.log(activeFieldNames);
-    //     model.client.serverAPI().requestHistograms({ hist2D: listToPair(activeFieldNames) });
-    //   }
-    // });
+    // whenever the list of 2D histogram subscriptions change,
+    // request any that we don't have in our cache.
     publicAPI.onHistogram2DSubscriptionChange((request) => {
       const { id, variables, metadata } = request;
-      // { id: 0, variables: [["2 point shots percentage", "2 point shots percentage"]],
+      // { id: 0, variables: [["2 point shots percentage", "2 point shots percentage"],...],
       // metadata: {numberOfBins: 32, partial: false, symmetric: true}, }
       if (variables.length > 0) {
         const needList = [];
@@ -74,7 +57,7 @@ function divvyProvider(publicAPI, model) {
           model.client.serverAPI().requestHistograms({ hist2D: needList });
         }
       }
-      // Shortcut hack - we know id 1 is parallel coords. It needs selection histos
+      // TODO: Shortcut hack - we know id 1 is parallel coords. It needs selection histos
       if (id === 1) {
         model.client.serverAPI().requestAnnotationHistograms({ hist2D: variables });
         // if there's an annotation, re-calc its histograms.
@@ -153,6 +136,7 @@ export function extend(publicAPI, model, initialValues = {}) {
   MutualInformationProvider.extend(publicAPI, model, initialValues);
   // PersistentStateProvider.extend(publicAPI, model);
 
+  CompositeClosureHelper.event(publicAPI, model, 'busy');
   divvyProvider(publicAPI, model);
 }
 
