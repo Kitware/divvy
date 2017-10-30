@@ -1,0 +1,53 @@
+.ersLogoPadding {
+  flex: none;
+  min-width: 245px;
+  width: 245px;
+  height: 1em;
+  float: left;
+}
+
+.container {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+}
+
+.toolbar {
+  position: absolute;
+  top: 2px;
+  left: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.count {
+  float: left;
+  font-size: 200%;
+  font-weight: bold;
+  line-height: 35px;
+  padding: 0 10px;
+  text-align: right;
+  min-width: 150px;
+  position: relative;
+}
+
+.content {
+  position: absolute;
+  top: 3em;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+}
+
+.cameraTools {
+  float: right;
+  position: relative;
+  width: 280px;
+  padding-right: 15px;
+  top: 2px;
+}
+
+.fullSize {
+  width: 100%;
+  height: 100%;
+}

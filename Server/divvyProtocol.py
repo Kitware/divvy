@@ -117,10 +117,11 @@ class DivvyProtocol(ParaViewWebProtocol):
     px = vtk_to_numpy(vtkX)
     py = vtk_to_numpy(vtkY)
     # clip puts maximum values into the last bin
-    ix = np.clip(np.floor((px - xrng[0]) * numBins / (xrng[1] - xrng[0])).astype(int), 0, numBins - 1)
-    iy = np.clip(np.floor((py - yrng[0]) * numBins / (yrng[1] - yrng[0])).astype(int), 0, numBins - 1)
-    for i, j in zip(ix, iy):
-        result[i,j] += 1
+    # ix = np.clip(np.floor((px - xrng[0]) * numBins / (xrng[1] - xrng[0])).astype(int), 0, numBins - 1)
+    # iy = np.clip(np.floor((py - yrng[0]) * numBins / (yrng[1] - yrng[0])).astype(int), 0, numBins - 1)
+    # for i, j in zip(ix, iy):
+    #     result[i,j] += 1
+    result = np.histogram2d(px, py, bins=numBins, range=[xrng, yrng])[0]
     return result
 
   def format2DHistogramResult(self, pair, hist2D, annot=None, inScore=None, inVtkX=None, inVtkY=None, inXrng=None, inYrng=None):
