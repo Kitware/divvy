@@ -50,6 +50,9 @@ class DivvyProtocol(ParaViewWebProtocol):
     self.lastHist2DList = None
     self.numBins = 32
 
+  def getData(self):
+    return self.dataTable
+
   # return a dictionary of numeric column names and their ranges.
   @exportRpc('divvy.fields.get')
   def getFields(self):

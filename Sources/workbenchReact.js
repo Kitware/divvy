@@ -12,6 +12,7 @@ import HistogramSelector from 'paraviewweb/src/InfoViz/Native/HistogramSelector'
 import FieldSelector from 'paraviewweb/src/InfoViz/Native/FieldSelector';
 import MutualInformationDiagram from 'paraviewweb/src/InfoViz/Native/MutualInformationDiagram';
 import ParallelCoordinates from 'paraviewweb/src/InfoViz/Native/ParallelCoordinates';
+import RemoteRenderer from 'paraviewweb/src/NativeUI/Canvas/RemoteRenderer';
 
 import AnnotationEditorWidget from 'paraviewweb/src/React/Widgets/AnnotationEditorWidget';
 
@@ -65,6 +66,7 @@ export default class WorkbenchReact extends React.Component {
     };
     const annotEditor = new ReactAdapter(AnnotationEditorWidget, annotationWidgetProps);
 
+    const remoteRenderer = new RemoteRenderer(provider.getClient().pvwClient(), null);
 
     const viewports = {
       Fields: {
@@ -89,40 +91,16 @@ export default class WorkbenchReact extends React.Component {
         viewport: -1,
         scroll: true,
       },
+      '3D Scatterplot': {
+        component: remoteRenderer,
+        viewport: -1,
+        scroll: false,
+      },
     };
 
     this.workbench = new Workbench();
     this.workbench.setComponents(viewports);
     this.workbench.setLayout('2x2');
-
-    // set a target number per row.
-    // histogramSelector.requestNumBoxesPerRow(4);
-
-    // const props = {
-    //   onLayoutChange(layout) {
-    //     workbench.setLayout(layout);
-    //   },
-    //   onViewportChange(index, instance) {
-    //     workbench.setViewport(index, instance);
-    //   },
-    //   activeLayout: workbench.getLayout(),
-    //   viewports: workbench.getViewportMapping(),
-    //   count: 4,
-    // };
-
-    // const controlPanel = new ReactAdapter(WorkbenchController, props);
-    // const shiftedWorkbench = new Composite();
-    // shiftedWorkbench.addViewport(new Spacer(), false);
-    // shiftedWorkbench.addViewport(workbench);
-    // const mainComponent = new ToggleControl(shiftedWorkbench, controlPanel, 280);
-    // mainComponent.setContainer(container);
-
-    // this.subscriptions.push(workbench.onChange((model) => {
-    //   props.activeLayout = model.layout;
-    //   props.viewports = model.viewports;
-    //   props.count = model.count;
-    //   controlPanel.render();
-    // });
 
     this.subscriptions.push(this.workbench.onVisibilityChange((event) => {
       const { component, index, count } = event;
@@ -130,6 +108,20 @@ export default class WorkbenchReact extends React.Component {
         component ? component.color : 'none', index, count,
         index === -1 || index >= count ? 'hidden' : 'visible',
       );
+      if (index !== -1 && component === remoteRenderer) {
+        // Tell scatterplot to update before first render.
+        let names = provider.getActiveFieldNames();
+        if (names.length < 4) {
+          names = provider.getFieldNames();
+        }
+        const config = {
+          x: names[0 % names.length],
+          y: names[1 % names.length],
+          z: names[2 % names.length],
+          colorBy: names[3 % names.length],
+        };
+        provider.updateScatterPlot(config);
+      }
     }));
 
     // make sure annot editor hears about annot changes

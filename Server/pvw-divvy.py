@@ -33,6 +33,7 @@ import os
 from paraview.web import pv_wslink
 from paraview.web import protocols as pv_protocols
 from divvyProtocol import DivvyProtocol
+from scatterplotProtocol import ScatterPlotProtocol
 
 from paraview import simple
 from wslink import server
@@ -59,7 +60,13 @@ class _DivvyServer(pv_wslink.PVServerProtocol):
 
     def initialize(self):
         # Bring used components
-        self.registerVtkWebProtocol(DivvyProtocol(_DivvyServer.fileToLoad))
+        self.registerVtkWebProtocol(pv_protocols.ParaViewWebMouseHandler())
+        self.registerVtkWebProtocol(pv_protocols.ParaViewWebViewPort())
+        self.registerVtkWebProtocol(pv_protocols.ParaViewWebViewPortImageDelivery())
+
+        dataProtocol = DivvyProtocol(_DivvyServer.fileToLoad)
+        self.registerVtkWebProtocol(dataProtocol)
+        self.registerVtkWebProtocol(ScatterPlotProtocol(dataProtocol))
         self.updateSecret(_DivvyServer.authKey)
 
 # =============================================================================

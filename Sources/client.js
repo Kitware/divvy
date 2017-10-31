@@ -27,6 +27,7 @@ function divvyClient(publicAPI, model) {
               subscribe1DHistogram: callback => session.subscribe('divvy.histogram1D.push', callback),
               subscribe2DHistogram: callback => session.subscribe('divvy.histogram2D.push', callback),
               updateAnnotation: annot => session.call('divvy.annotation.update', [annot]),
+              updateScatterPlot: request => session.call('divvy.scatterplot.update', [request]),
             }),
         },
       );
@@ -50,6 +51,8 @@ function divvyClient(publicAPI, model) {
       model.connection = null;
     }
   };
+
+  publicAPI.pvwClient = () => (model.pvwClient);
 
   publicAPI.serverAPI = () => (model.pvwClient.Divvy);
 
