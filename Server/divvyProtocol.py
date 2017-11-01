@@ -4,10 +4,11 @@ r"""
 """
 from __future__ import absolute_import, division, print_function
 
-import os
+import os, math
 
 # import paraview modules.
 from paraview.web.protocols import ParaViewWebProtocol
+from paraview import simple
 # import RPC annotation
 from wslink import register as exportRpc
 
@@ -31,6 +32,66 @@ NUMERIC_TYPES = {
   'id_type': True,
   'signed_char': True
 }
+
+def fillTableWithDataSet(table, dataset):
+  if not dataset:
+    return
+  nbRows = table.GetNumberOfRows()
+  print('Table size', nbRows)
+  if dataset.IsA('vtkMultiBlockDataSet') :
+    nbBlocks = dataset.GetNumberOfBlocks()
+    if nbBlocks:
+      for bIdx in range(nbBlocks):
+        fillTableWithDataSet(table, dataset.GetBlock(bIdx))
+  elif dataset.IsA('vtkTable'):
+    if nbRows == 0 or nbRows == dataset.GetNumberOfRows():
+      nbColumns = dataset.GetNumberOfColumns()
+      for cIdx in range(nbColumns):
+        table.AddColumn(dataset.GetColumn(cIdx))
+  elif dataset:
+    if nbRows == 0 or nbRows == dataset.GetNumberOfPoints():
+      pd = dataset.GetPointData()
+      # Handle mesh xyz
+      nbPoints = dataset.GetNumberOfPoints()
+      coords = [0, 0, 0]
+      xCoord = vtk.vtkFloatArray()
+      xCoord.SetName('x Mesh')
+      xCoord.SetNumberOfTuples(nbPoints)
+      table.AddColumn(xCoord)
+      yCoord = vtk.vtkFloatArray()
+      yCoord.SetName('y Mesh')
+      yCoord.SetNumberOfTuples(nbPoints)
+      table.AddColumn(yCoord)
+      zCoord = vtk.vtkFloatArray()
+      zCoord.SetName('z Mesh')
+      zCoord.SetNumberOfTuples(nbPoints)
+      table.AddColumn(zCoord)
+      for pIdx in range(nbPoints):
+        dataset.GetPoints().GetPoint(pIdx, coords)
+        xCoord.SetTuple1(pIdx, coords[0])
+        yCoord.SetTuple1(pIdx, coords[1])
+        zCoord.SetTuple1(pIdx, coords[2])
+
+      # Handle point data
+      for aIdx in range(pd.GetNumberOfArrays()):
+        array = pd.GetArray(aIdx)
+        if array.GetNumberOfComponents() == 1:
+          table.AddColumn(pd.GetArray(aIdx))
+        else:
+          nbTuples = array.GetNumberOfTuples()
+          magnitudeArray = array.NewInstance()
+          magnitudeArray.SetName('Magnitude of %s' % array.GetName())
+          magnitudeArray.SetNumberOfTuples(nbTuples)
+          tupleHolder = range(array.GetNumberOfComponents())
+          for tIdx in range(nbTuples):
+            array.GetTuple(tIdx, tupleHolder)
+            mag = 0
+            for el in tupleHolder:
+              mag += el * el
+            mag = math.sqrt(mag)
+            magnitudeArray.SetTuple1(tIdx, mag)
+          table.AddColumn(magnitudeArray)
+
 
 # =============================================================================
 # Respond to all RPC requests and publish data to a Divvy client
@@ -58,12 +119,24 @@ class DivvyProtocol(ParaViewWebProtocol):
   def getFields(self):
     if not self.dataTable:
       # read a data file
-      r = vtk.vtkDelimitedTextReader()
-      r.DetectNumericColumnsOn()
-      r.SetFileName(self.inputFile)
-      r.SetHaveHeaders(True)
-      r.Update()
-      self.dataTable = r.GetOutput()
+      if '.csv' in self.inputFile:
+        r = vtk.vtkDelimitedTextReader()
+        r.DetectNumericColumnsOn()
+        r.SetFileName(self.inputFile)
+        r.SetHaveHeaders(True)
+        r.Update()
+        self.dataTable = r.GetOutput()
+      else:
+        reader = simple.OpenDataFile(self.inputFile)
+        reader.UpdatePipeline()
+        ds = reader.GetClientSideObject().GetOutputDataObject(0)
+        if ds.IsA('vtkTable'):
+          self.dataTable = ds
+        else:
+          self.dataTable = vtk.vtkTable()
+          fillTableWithDataSet(self.dataTable, ds)
+
+
     self.fields = {}
     self.columnNames = []
     self.numRows = self.dataTable.GetNumberOfRows()
