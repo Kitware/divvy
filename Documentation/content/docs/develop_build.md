@@ -1,43 +1,48 @@
-title: Building vtk.js
+title: Building divvy
 ---
 
-VTK.js is a library and should be used as ES6 dependency. However, it is worth building vtk.js to validate the style and to generate the JavaScript file for external script usage as described [here](intro_vtk_as_external_script.html).
+Divvy is an application that should be used along with ParaView. The easiest way to get started is to use our prebuild version with a ParaView binary that can be downloaded [here](https://www.paraview.org/download/).
 
-The library can be built with webpack automatically. Webpack can either gather all the source files and concatenate them with little modification, or it can build it for production which will minify the generated file.
+```
+$ npm install -g pvw-divvy
+$ Divvy
 
-## Building vtk.js
+  Usage: Divvy [options]
 
-In order to build the library you can run `npm run build` for quick development usage or `npm run build:release` for production usage.
+
+  Options:
+
+    -V, --version          output the version number
+    -p, --port [8080]      Start web server with given port
+    -d, --data [filePath]  Data to load
+    -s, --server-only      Do not open the web browser
+
+    --paraview [path]      Provide the ParaView root path to use
+
+    -h, --help             output usage information
+```
+
+But if you really want to build it yourself you can run the following set of command line inside the repository
+
+## Building Divvy
+
+In order to build the application you can run `npm run build` for quick development usage or `npm run build:release` for production usage.
 
 {% note warn For Windows users %}
 You cannot use the previous command line for building a production ready bundle.
 Instead you will need to run: `npm run build -- -p`
 {% endnote %}
 
-Either of these commands will generate a `dist/vtk.js` file that can then be used as an external script.
+Either of these commands will update the `dist` directory with all the required resource.
 
 ## Building the website
 
-VTK.js comes with its tools to build the website that get published on [github.io](https://kitware.github.io/vtk-js/) which enables you to write documentation and see what it will look like once published.
+Divvy comes with its tools to build the website that get published on [github.io](https://kitware.github.io/divvy/) which enables you to write documentation and see what it will look like once published.
 
-In order to run the tests and build the full website with its examples you can run the following command:
+In order to build the full website you can run the following command:
 
 ```sh
 $ npm run doc:www
 ```
 
-You will be able to browse the content on `http://localhost:4000/vtk-js` which will contains the test results and coverage.
-
-But if you want to skip the tests you can run the following command:
-
-```sh
-$ npm run doc -- -s
-```
-
-And if you want to skip tests and examples:
-
-```sh
-$ npm run doc -- -s -f ExampleNameThatDoesNotExist
-```
-
-`ExampleNameThatDoesNotExist` can be replaced by multilpe real example names and the doc tool will only build those examples.
+You will be able to browse the content on `http://localhost:4000/divvy`.

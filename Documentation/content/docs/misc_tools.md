@@ -1,9 +1,9 @@
 title: Tools
 ---
 
-vtk.js is an Open Source Framework for building Web application for Scientific Visualization.
+Divvy is an Open Source application based on ParaViewWeb.
 
-The following guide explain our software process and tools use to build and develop this framework.
+The following guide explain our software process and tools use to build and develop this application.
 
 ## Commitizen
 
