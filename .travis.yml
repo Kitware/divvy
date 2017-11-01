@@ -1,24 +1,14 @@
 language: node_js
 os: linux
-sudo: required
 dist: trusty
+before_script:
+  - "export DISPLAY=:99.0"
+  - "sh -e /etc/init.d/xvfb start"
+  - sleep 3 # give xvfb some time to start
 addons:
-  sources:
-    - ubuntu-toolchain-r-test
-  apt:
-    packages:
-      - gcc-4.8
-      - g++-4.8
-      - xvfb
+  chrome: stable
 node_js:
   - '8'
-before_script:
-  - export DISPLAY=:99.0; sh -e /etc/init.d/xvfb start
-  - sleep 3
-
-env:
-  - CXX=g++-4.8
-
 notifications:
   email:
     recipients:
