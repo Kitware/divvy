@@ -118,8 +118,6 @@ function divvyProvider(publicAPI, model) {
   publicAPI.setHistogram2dProvider(publicAPI);
 
   publicAPI.getClient = () => model.client;
-
-  publicAPI.updateScatterPlot = config => (model.client.serverAPI().updateScatterPlot(config));
 }
 
 const DEFAULT_VALUES = {

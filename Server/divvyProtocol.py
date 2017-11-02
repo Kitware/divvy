@@ -82,7 +82,7 @@ def fillTableWithDataSet(table, dataset):
           magnitudeArray = array.NewInstance()
           magnitudeArray.SetName('Magnitude of %s' % array.GetName())
           magnitudeArray.SetNumberOfTuples(nbTuples)
-          tupleHolder = range(array.GetNumberOfComponents())
+          tupleHolder = list(range(array.GetNumberOfComponents()))
           for tIdx in range(nbTuples):
             array.GetTuple(tIdx, tupleHolder)
             mag = 0

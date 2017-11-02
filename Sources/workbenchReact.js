@@ -124,24 +124,14 @@ export default class WorkbenchReact extends React.Component {
     }));
 
     this.subscriptions.push(this.workbench.onVisibilityChange((event) => {
-      const { component, index, count } = event;
-      console.log(
-        component ? component.color : 'none', index, count,
-        index === -1 || index >= count ? 'hidden' : 'visible',
-      );
+      const { component, index /* , count */ } = event;
+      // console.log(
+      //   component ? component : 'none', index, count,
+      //   index === -1 || index >= count ? 'hidden' : 'visible',
+      // );
       if (index !== -1 && component === this.manager.getRemoteRenderer('workbench-scatterplot')) {
         // Tell scatterplot to update before first render.
-        let names = provider.getActiveFieldNames();
-        if (names.length < 4) {
-          names = provider.getFieldNames();
-        }
-        const config = {
-          x: names[0 % names.length],
-          y: names[1 % names.length],
-          z: names[2 % names.length],
-          colorBy: names[3 % names.length],
-        };
-        provider.updateScatterPlot(config);
+        this.manager.updateModel(this.manager.getModel());
       }
     }));
 
