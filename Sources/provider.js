@@ -140,6 +140,8 @@ export function extend(publicAPI, model, initialValues = {}) {
   MutualInformationProvider.extend(publicAPI, model, initialValues);
   // PersistentStateProvider.extend(publicAPI, model);
 
+  CompositeClosureHelper.set(publicAPI, model, ['scatterPlotManager']);
+  CompositeClosureHelper.get(publicAPI, model, ['scatterPlotManager']);
   CompositeClosureHelper.event(publicAPI, model, 'busy');
   divvyProvider(publicAPI, model);
 }

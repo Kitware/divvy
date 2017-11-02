@@ -10,6 +10,8 @@ function divvyClient(publicAPI, model) {
   let ready = false;
   const readyCallbacks = [];
 
+  const busy = promise => promise;
+
   publicAPI.connect = (userConfig) => {
     const config = Object.assign({ application: 'divvy' }, userConfig);
     const smartConnect = SmartConnect.newInstance({ config });
@@ -27,7 +29,13 @@ function divvyClient(publicAPI, model) {
               subscribe1DHistogram: callback => session.subscribe('divvy.histogram1D.push', callback),
               subscribe2DHistogram: callback => session.subscribe('divvy.histogram2D.push', callback),
               updateAnnotation: annot => session.call('divvy.annotation.update', [annot]),
+              // scatter plot
               updateScatterPlot: request => session.call('divvy.scatterplot.update', [request]),
+              // updateScatterPlot: params => busy(session.call('erdc.ers.viz.update.scatter.plot', [...params])),
+              getLutImages: () => busy(session.call('divvy.scatterplot.lut.images.get', [])),
+              updateCamera: mode => busy(session.call('divvy.scatterplot.camera.update', [mode])),
+              updateAxis: () => busy(session.call('divvy.scatterplot.axes.update', [])),
+              getViews: () => busy(session.call('divvy.scatterplot.views.get')),
             }),
         },
       );

@@ -10,6 +10,7 @@ import WorkbenchReact from './workbenchReact';
 
 import DivvyProvider from './provider';
 import DivvyClient from './client';
+import ScatterPlotManager from './scatterPlotManager';
 
 const container = document.querySelector('.content');
 container.style.height = '100vh';
@@ -21,6 +22,9 @@ const provider = DivvyProvider.newInstance({ client });
 
 // don't lay out the initial controls until field list is back.
 client.onReady(() => {
+  const scatterPlotManager = new ScatterPlotManager(provider);
+  provider.setScatterPlotManager(scatterPlotManager);
+
   // eslint-disable-next-line react/no-render-return-value
   const mainComponent = ReactDOM.render(
     React.createElement(
