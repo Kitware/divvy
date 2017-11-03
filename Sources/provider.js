@@ -118,8 +118,6 @@ function divvyProvider(publicAPI, model) {
   publicAPI.setHistogram2dProvider(publicAPI);
 
   publicAPI.getClient = () => model.client;
-
-  publicAPI.updateScatterPlot = config => (model.client.serverAPI().updateScatterPlot(config));
 }
 
 const DEFAULT_VALUES = {
@@ -140,6 +138,8 @@ export function extend(publicAPI, model, initialValues = {}) {
   MutualInformationProvider.extend(publicAPI, model, initialValues);
   // PersistentStateProvider.extend(publicAPI, model);
 
+  CompositeClosureHelper.set(publicAPI, model, ['scatterPlotManager']);
+  CompositeClosureHelper.get(publicAPI, model, ['scatterPlotManager']);
   CompositeClosureHelper.event(publicAPI, model, 'busy');
   divvyProvider(publicAPI, model);
 }

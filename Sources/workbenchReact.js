@@ -12,7 +12,7 @@ import HistogramSelector from 'paraviewweb/src/InfoViz/Native/HistogramSelector'
 import FieldSelector from 'paraviewweb/src/InfoViz/Native/FieldSelector';
 import MutualInformationDiagram from 'paraviewweb/src/InfoViz/Native/MutualInformationDiagram';
 import ParallelCoordinates from 'paraviewweb/src/InfoViz/Native/ParallelCoordinates';
-import RemoteRenderer from 'paraviewweb/src/NativeUI/Canvas/RemoteRenderer';
+// import RemoteRenderer from 'paraviewweb/src/NativeUI/Canvas/RemoteRenderer';
 
 import AnnotationEditorWidget from 'paraviewweb/src/React/Widgets/AnnotationEditorWidget';
 
@@ -20,13 +20,17 @@ import BusyFeedback from 'paraviewweb/src/React/Widgets/BusyFeedback';
 import AnnotationEditorToggleTool from 'paraviewweb/src/React/ToggleTools/AnnotationEditor';
 import FieldSelectorToggleTool from 'paraviewweb/src/React/ToggleTools/FieldSelector';
 import WorkbenchLayoutToggleTool from 'paraviewweb/src/React/ToggleTools/WorkbenchLayout';
+import ScatterPlotControlToggleTool from 'paraviewweb/src/React/ToggleTools/ScatterPlotControl';
+import ScatterPlotCameraControl from 'paraviewweb/src/React/Widgets/ScatterPlotCameraControl';
 
 import style from './WorkbenchReact.mcss';
 
 export default class WorkbenchReact extends React.Component {
   constructor(props) {
     super(props);
-    this.state = {};
+    this.state = {
+      scatterPlotVisible: false,
+    };
 
     this.onActiveWindow = this.onActiveWindow.bind(this);
     this.resize = this.resize.bind(this);
@@ -66,8 +70,6 @@ export default class WorkbenchReact extends React.Component {
     };
     const annotEditor = new ReactAdapter(AnnotationEditorWidget, annotationWidgetProps);
 
-    const remoteRenderer = new RemoteRenderer(provider.getClient().pvwClient(), null);
-
     const viewports = {
       Fields: {
         component: fieldSelector,
@@ -91,36 +93,45 @@ export default class WorkbenchReact extends React.Component {
         viewport: -1,
         scroll: true,
       },
-      '3D Scatterplot': {
-        component: remoteRenderer,
-        viewport: -1,
-        scroll: false,
-      },
     };
 
     this.workbench = new Workbench();
     this.workbench.setComponents(viewports);
     this.workbench.setLayout('2x2');
 
+    // Setup manager, singleton shared by all scatter plot views.
+    this.manager = this.props.provider.getScatterPlotManager();
+    this.manager.onReady(() => {
+      viewports['3D Scatterplot'] = {
+        component: this.manager.createRemoteRenderer('workbench-scatterplot'),
+        viewport: -1,
+        scroll: false,
+      };
+      this.workbench.setComponents(viewports);
+      this.forceUpdate();
+    });
+
+    this.subscriptions.push(this.workbench.onChange((event) => {
+      const newScatterPlotVisible = (event.viewports['3D Scatterplot'].viewport < event.count
+          && event.viewports['3D Scatterplot'].viewport > -1);
+      if (newScatterPlotVisible && !this.state.scatterPlotVisible) {
+        // popup scatterplot controls whenever scatterplot is newly shown.
+        // if (this.scatterPlotControl) this.scatterPlotControl.setState({ overlayVisible: true });
+      }
+      this.setState({
+        scatterPlotVisible: newScatterPlotVisible,
+      });
+    }));
+
     this.subscriptions.push(this.workbench.onVisibilityChange((event) => {
-      const { component, index, count } = event;
-      console.log(
-        component ? component.color : 'none', index, count,
-        index === -1 || index >= count ? 'hidden' : 'visible',
-      );
-      if (index !== -1 && component === remoteRenderer) {
+      const { component, index /* , count */ } = event;
+      // console.log(
+      //   component ? component : 'none', index, count,
+      //   index === -1 || index >= count ? 'hidden' : 'visible',
+      // );
+      if (index !== -1 && component === this.manager.getRemoteRenderer('workbench-scatterplot')) {
         // Tell scatterplot to update before first render.
-        let names = provider.getActiveFieldNames();
-        if (names.length < 4) {
-          names = provider.getFieldNames();
-        }
-        const config = {
-          x: names[0 % names.length],
-          y: names[1 % names.length],
-          z: names[2 % names.length],
-          colorBy: names[3 % names.length],
-        };
-        provider.updateScatterPlot(config);
+        this.manager.updateModel(this.manager.getModel());
       }
     }));
 
@@ -172,6 +183,25 @@ export default class WorkbenchReact extends React.Component {
             provider={this.props.provider}
             overlayVisible={this.props.provider.getActiveFieldNames().length <= 1}
           />
+          { this.state.scatterPlotVisible ?
+            <ScatterPlotControlToggleTool
+              activeWindow={this.state.activeWindow}
+              onActiveWindow={this.onActiveWindow}
+              provider={this.props.provider}
+              scatterPlotManager={this.manager}
+              scatterPlotId="workbench"
+              // TODO
+              activeScores={[0, 1, 2]}
+              onActiveScoresChange={() => { console.log('update active scores'); }}
+              overlayVisible={this.state.scatterPlotVisible}
+              ref={(c) => { this.scatterPlotControl = c; }}
+            /> : null
+          }
+          { this.state.scatterPlotVisible ?
+            <section className={style.cameraTools}>
+              <ScatterPlotCameraControl manager={this.manager} />
+            </section> : null
+          }
         </div>
         <div className={style.content}>
           <ComponentToReact className={style.fullSize} component={this.workbench} />

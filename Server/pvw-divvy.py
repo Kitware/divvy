@@ -64,9 +64,12 @@ class _DivvyServer(pv_wslink.PVServerProtocol):
         self.registerVtkWebProtocol(pv_protocols.ParaViewWebViewPort())
         self.registerVtkWebProtocol(pv_protocols.ParaViewWebViewPortImageDelivery())
 
+        colorManager = pv_protocols.ParaViewWebColorManager()
+        self.registerVtkWebProtocol(colorManager)
+
         dataProtocol = DivvyProtocol(_DivvyServer.fileToLoad)
         self.registerVtkWebProtocol(dataProtocol)
-        self.registerVtkWebProtocol(ScatterPlotProtocol(dataProtocol))
+        self.registerVtkWebProtocol(ScatterPlotProtocol(dataProtocol, colorManager))
         self.updateSecret(_DivvyServer.authKey)
 
 # =============================================================================
