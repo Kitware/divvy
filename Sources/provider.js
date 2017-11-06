@@ -31,10 +31,10 @@ function divvyProvider(publicAPI, model) {
     // activate scoring gui
     const scores = [
       { name: 'Interesting', color: '#66c2a5', value: 1 },
-      { name: 'Exciting', color: '#fc8d62', value: 5 },
-      { name: 'Neutral', color: '#8da0cb', value: 0 },
-      { name: 'Bland', color: '#e78ac3', value: -2 },
-      { name: 'Other', color: '#a6d854', value: 2 },
+      { name: 'Exciting', color: '#fc8d62', value: 2 },
+      { name: 'Neutral', color: '#8da0cb', value: 3 },
+      { name: 'Bland', color: '#e78ac3', value: 4 },
+      { name: 'Other', color: '#a6d854', value: 5 },
     ];
     publicAPI.setScores(scores);
     publicAPI.setDefaultScore(0);

@@ -33,6 +33,22 @@ NUMERIC_TYPES = {
   'signed_char': True
 }
 
+scoreDefinitions = [
+  { 'name': 'Interesting', 'color': '#66c2a5', 'value': 1 },
+  { 'name': 'Exciting', 'color': '#fc8d62', 'value': 2 },
+  { 'name': 'Neutral', 'color': '#8da0cb', 'value': 3 },
+  { 'name': 'Bland', 'color': '#e78ac3', 'value': 4 },
+  { 'name': 'Other', 'color': '#a6d854', 'value': 5 }
+  # { 'name': 'none', 'color': '#999999', 'value': 6}
+]
+# set 'index' key from list order.
+for i in range(len(scoreDefinitions)):
+    scoreDefinitions[i]['index'] = i
+
+USER_SELECTION = "user selection"
+UNSELECTED_INDEX = len(scoreDefinitions)
+
+
 def fillTableWithDataSet(table, dataset):
   if not dataset:
     return
@@ -101,6 +117,7 @@ class DivvyProtocol(ParaViewWebProtocol):
     super(DivvyProtocol, self).__init__()
     self.inputFile = inputFile
     self.dataTable = None
+    self.dataTableSelection = None
     # if we calc a full histogram, cache it
     self.hist2DCache = {}
     self.hist1DCache = {}
@@ -113,6 +130,11 @@ class DivvyProtocol(ParaViewWebProtocol):
 
   def getData(self):
     return self.dataTable
+  def getDataWithSelection(self):
+    return self.dataTableSelection
+
+  def setScatterPlot(self, sp):
+    self.scatterPlot = sp
 
   # return a dictionary of numeric column names and their ranges.
   @exportRpc('divvy.fields.get')
@@ -147,7 +169,45 @@ class DivvyProtocol(ParaViewWebProtocol):
       if arr.GetDataTypeAsString() in NUMERIC_TYPES:
         self.fields[self.columnNames[i]] = { 'range': list(arr.GetRange()) }
 
+    self.initializeSelection()
+
     return self.fields
+
+  def initializeSelection(self):
+    if not self.dataTableSelection:
+      self.dataTableSelection = vtk.vtkTable()
+      self.dataTableSelection.ShallowCopy(self.dataTable)
+      self._userSelection = vtk.vtkUnsignedCharArray()
+      self._userSelection.SetNumberOfTuples(self.numRows)
+      self._userSelection.SetName(USER_SELECTION)
+      self._userSelection.FillComponent(0, UNSELECTED_INDEX)
+      self.dataTableSelection.AddColumn(self._userSelection)
+
+  def SetSelection(self, selection):
+    if (not selection) or (self._userSelection.GetNumberOfTuples() > 0 and selection.GetNumberOfTuples() != self._userSelection.GetNumberOfTuples()):
+      self._userSelection.FillComponent(0, UNSELECTED_INDEX)
+      return
+    self._userSelection.DeepCopy(selection)
+    self._userSelection.SetName(USER_SELECTION)
+
+
+  @exportRpc('divvy.available.scores')
+  def getAvailableScores(self):
+      """Request the list of scores that can be applied to selections to create an annotation.
+
+      The result is an array of dictionaries, each of which contains:
+      + **name**: A text string naming the score,
+      + **value**: A numeric value assigned to the score and used for objective functions,
+      + **index**: The index of the score in this array (useful for reverse lookups), and
+      + **color**: A color to use for the score expressed as a hexadecimal constant.
+      """
+      return scoreDefinitions
+
+  def getScoreByIndex(self, index):
+    return scoreDefinitions[index]
+
+  def getScoreValue(self, index):
+    return scoreDefinitions[index]['value']
 
   def calc1DHistogram(self, vtkX, xrng, numBins):
     result = np.zeros(numBins)
@@ -309,6 +369,7 @@ class DivvyProtocol(ParaViewWebProtocol):
     selectionType = annot['selection']['type']
     if selectionType == 'range':
       myVars = annot['selection']['range']['variables']
+      # get the annot's score, or the first score by default.
       annotScore = annot['score'][0] if len(annot['score']) > 0 else 0
 
       colResult = []
@@ -327,15 +388,14 @@ class DivvyProtocol(ParaViewWebProtocol):
           insideInterval.append(np.all([interval[0] <= col, col <= interval[1]], axis=0))
         # data can be inside any interval in this column
         colResult.append(np.any(insideInterval, axis=0))
-      # Row must be inside all columns to be selected. Convert True/False to 1/0
-      labeledRows = np.all(colResult, axis=0).astype(np.uint8)
-      # Change selected rows to have their score as a label. If score ==0, need to flip.
-      if annotScore == 0:
-        labeledRows = (labeledRows * -1) + 1
-      else:
-        labeledRows *= annotScore
+      # Row must be inside all columns to be selected.
+      labeledRows = np.all(colResult, axis=0)
+
+      # convert true to the annotScore's index. convert false to the unselected index.
+      labeledRows = np.array(list(map(lambda x: annotScore if x else UNSELECTED_INDEX, labeledRows))).astype(np.uint8)
+
       self.selectedRows = { 'score': [annotScore], 'data': labeledRows.astype(np.uint8) }
-      print('Selected row count:', np.sum(self.selectedRows['data'] == annotScore))
+      print('Selected row count:', np.sum(self.selectedRows['data'] == annotScore), 'scoreIndex', annotScore)
     elif selectionType == 'partition':
       # partitions label all the rows in a column with their scores.
       var = annot['selection']['partition']['variable']
@@ -367,6 +427,10 @@ class DivvyProtocol(ParaViewWebProtocol):
     else:
       print('empty selection')
       self.selectedRows = { 'score': [-1], 'data': np.zeros(self.numRows) }
+
+    # translate selection into VTK data, for use by scatterplot
+    self.SetSelection(numpy_to_vtk(self.selectedRows['data']))
+    self.scatterPlot.setActiveAnnotation(annot)
 
     # if someone is listening to hist2D selections....
     if self.lastHist2DList:

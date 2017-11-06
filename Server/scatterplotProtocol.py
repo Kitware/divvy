@@ -1,16 +1,15 @@
 r"""
-    ParaViewWeb protocol to satisfy RPC and publish/subscribe requests from Divvy
-
+    ParaViewWeb protocol to satisfy requests about scatterplot
 """
 from __future__ import absolute_import, division, print_function
 
-import os, json
+import os, json, re
 
 # import paraview modules.
 from paraview.web.protocols import ParaViewWebProtocol
 from paraview import simple, servermanager
 
-# import RPC annotation
+# import RPC decorator
 from wslink import register as exportRpc
 
 # data, math
@@ -21,9 +20,9 @@ from vtk.vtkPVServerManagerRendering import vtkSMPVRepresentationProxy
 # import numpy as np
 
 USER_SELECTION = "user selection"
+SELECTION_COLORMAP = "Selection Categorical"
 
-### The color manager is not currently working for our needs in this
-### department.  So we have to do what need specifically in here.
+# assign a lut image based on json colormap
 def getTargetLutImages(presetNames, numSamples):
     colorArray = vtk.vtkUnsignedCharArray()
     colorArray.SetNumberOfComponents(3)
@@ -40,13 +39,11 @@ def getTargetLutImages(presetNames, numSamples):
     imgData.SetDimensions(numSamples, 1, 1)
     imgData.GetPointData().SetScalars(colorArray)
 
-    # Use the vtk data encoder to base-64 encode the image as png, using no compression
+    # base-64 encode the image as png, using no compression
     encoder = vtk.vtkDataEncoder()
 
-    # Result container
     result = {}
 
-    # Loop over all presets
     for name in presetNames:
         lutProxy.ApplyPreset(name, True)
         rgb = [ 0, 0, 0 ]
@@ -101,6 +98,45 @@ class ScatterPlotProtocol(ParaViewWebProtocol):
 
     print('Presets were%simported successfully' % (' ' if importSuccess else ' NOT '))
 
+    self.activeSelectionInformation = {
+      "activeAnnotation": { "selection": { "type": "empty" }, "score": [] },
+      "activeScores": []
+    }
+
+    self.initializeUserSelectionPreset()
+
+  def initializeUserSelectionPreset(self):
+    hexRgbRegex = re.compile('#(\w{2})(\w{2})(\w{2})')
+    self._serverScores = self.divvyProtocol.getAvailableScores()
+    self._unselectedIndex = len(self._serverScores)
+    categoricalColors = []
+    categories = []
+
+    for scoreObj in self._serverScores:
+      colorString = scoreObj['color']
+      m = hexRgbRegex.match(colorString)
+      if m:
+        r = int(m.group(1), 16) / 255.0
+        g = int(m.group(2), 16) / 255.0
+        b = int(m.group(3), 16) / 255.0
+        categoricalColors += [ r, g, b ]
+        categories += [ scoreObj['value'], scoreObj['name']]
+
+      # make all scores active by default.
+      self.activeSelectionInformation['activeScores'].append(scoreObj['value'])
+
+    # End with a grey for "unselected"
+    categoricalColors += [ 0.6, 0.6, 0.6 ]
+    categories += [ min(self.activeSelectionInformation['activeScores']) - 1, 'unselected']
+
+    self.lutMap[SELECTION_COLORMAP] = {
+      "Name" : SELECTION_COLORMAP,
+      "NanColor" : [ 1.0, 0.0, 1.0 ],
+      "IndexedColors" : categoricalColors,
+      "Annotations": categories
+    }
+    print(self.lutMap[SELECTION_COLORMAP])
+
   def resetCamera(self):
     simple.Render(self.renderView)
     simple.ResetCamera(self.renderView)
@@ -114,8 +150,7 @@ class ScatterPlotProtocol(ParaViewWebProtocol):
 
     if not self.dataTable:
       # initialize everything
-      self.dataTable = vtk.vtkTable()
-      self.dataTable.ShallowCopy(self.divvyProtocol.getData())
+      self.dataTable = self.divvyProtocol.getDataWithSelection()
 
       # copy data from the main protocol, and set up pipelilne
       trivProducer = simple.TrivialProducer()
@@ -192,22 +227,131 @@ class ScatterPlotProtocol(ParaViewWebProtocol):
       vtkSMPVRepresentationProxy.SetScalarColoring(self.representation.SMProxy, config['colorBy'], 0)
       if config['colorBy'] == USER_SELECTION:
         # Coloring by the user selection needs special handling
-        # if not self._selectionLutInitialized:
-        #   self.updateUserSelectionLutProperties()
-        pass
+        if not self._selectionLutInitialized:
+          self.updateUserSelectionLutProperties()
       else:
         vtkSMPVRepresentationProxy.RescaleTransferFunctionToDataRange(self.representation.SMProxy, config['colorBy'], 0, False, True)
         self.colorManager.selectColorMap(self.representation.GetGlobalIDAsString(), config['colorMapName'])
 
     return { 'success': True }
 
+  # build a new colormap and opacity function for the new 'user selection' array
+  # The active annotation defines the selected data, and which scores are in the
+  # selection.
+  def updateUserSelectionLutProperties(self):
+    lutProxy = simple.GetColorTransferFunction(USER_SELECTION)
+    lutPwf = simple.GetOpacityTransferFunction(USER_SELECTION)
+
+    if not lutProxy:
+      print('There is no such color transfer function (%s) at this time' % USER_SELECTION)
+      return
+
+    if not lutPwf:
+      print('There is no such opacity transfer function (%s) at this time' % USER_SELECTION)
+      return
+
+    preset = self.lutMap[SELECTION_COLORMAP]['IndexedColors']
+    if not preset:
+      print('You are missing the "%s" color map definition' % SELECTION_COLORMAP)
+      return
+
+    activeAnnotation = self.activeSelectionInformation["activeAnnotation"]
+    activeScores = self.activeSelectionInformation["activeScores"]
+
+    annoType = activeAnnotation['selection']['type']
+    annoScore = activeAnnotation['score']
+
+    # append a 0 so unselected scores don't show by default.
+    scoreOpacities = [ 1.0 if score['value'] in activeScores else 0.0 for score in self._serverScores ] + [0]
+
+    numScores = len(self._serverScores)
+    pwfPoints = []
+    rgbPoints = []
+    delX = 0.49
+
+    # import pdb; pdb.set_trace()
+
+    ### Inside the cases below I also need to create custom opacity and size pwfs for
+    ### the "user selection" array
+
+    ### We take into account the "activeScores" pushed here by the client
+    ### so we can show/hide the appropriate subsets of points using a dedicated
+    ### opacity transfer function on the lookup table
+
+    # usRange = [self.userSelPointSizeRange[0], self.userSelPointSizeRange[1]]
+    usRange = [1.0, 3.0]
+    usDelta = (usRange[1] - usRange[0]) / numScores
+    sizeStops = [usRange[0] + i*usDelta for i in range(numScores)] + [usRange[1]]
+
+    if annoType == 'range':
+      scoreIndex = annoScore[0]
+      presetOffset = scoreIndex * 3
+      rgbPoints = []
+      pwfPoints = []
+      self.userSelScalePoints = []
+      for selVal in [scoreIndex, self._unselectedIndex]:
+        # add the selected color
+        rgbPoints += [ selVal - delX ] + preset[presetOffset:presetOffset+3] + [ selVal + delX ] + preset[presetOffset:presetOffset+3]
+        opacity = scoreOpacities[selVal]
+        pwfPoints += [ selVal - delX, opacity, 0.5, 0.0, selVal + delX, opacity, 0.5, 0.0 ]
+        # TODO: unselected needs to be minimum.
+        self.userSelScalePoints += [ selVal - delX, sizeStops[selVal], 0.5, 0.0, selVal + delX, sizeStops[selVal], 0.5, 0.0 ]
+
+    elif annoType == 'partition':
+      self.userSelScalePoints = []
+      for idx in range(len(annoScore)):
+        scoreIndex = annoScore[idx]
+        presetOffset = scoreIndex * 3
+
+        x1 = scoreIndex - delX
+        x2 = scoreIndex + delX
+        opacity = scoreOpacities[scoreIndex]
+
+        rgbPoints += [ x1 ] + preset[presetOffset:presetOffset+3]
+        rgbPoints += [ x2 ] + preset[presetOffset:presetOffset+3]
+        pwfPoints += [ x1, opacity, 0.5, 0.0, x2, opacity, 0.5, 0.0 ]
+        self.userSelScalePoints += [ x1, sizeStops[scoreIndex], 0.5, 0.0, x2, sizeStops[scoreIndex], 0.5, 0.0 ]
+    elif annoType == 'empty':
+      selVal = self._unselectedIndex
+      opacity = scoreOpacities[selVal]
+      rgbPoints = [ selVal-delX ] + preset[3*selVal:3*selVal + 3] + [ selVal+delX ] + preset[3*selVal:3*selVal + 3]
+      pwfPoints = [ selVal-delX, opacity, 0.5, 0.0, selVal+delX, opacity, 0.5, 0.0 ]
+      self.userSelScalePoints = [ selVal-delX, usRange[0], 0.5, 0.0, selVal+delX, usRange[0], 0.5, 0.0 ]
+    else:
+      print ('Unknown annotation selection type: %s' % annoType)
+      return
+
+    print('rgbPoints', rgbPoints)
+    print('pwfPoints', pwfPoints)
+    lutProxy.RGBPoints = rgbPoints
+    lutProxy.ScalarRangeInitialized = 1.0
+
+    if len(pwfPoints) > 0:
+      lutPwf.Points = pwfPoints
+      lutPwf.ScalarRangeInitialized = 1
+      lutProxy.EnableOpacityMapping = 1
+    else:
+      lutProxy.EnableOpacityMapping = 0
+
+    self._selectionLutInitialized = True
+
+  def setActiveAnnotation(self, activeAnnotation):
+    self.activeSelectionInformation["activeAnnotation"] = activeAnnotation
+    self.updateUserSelectionLutProperties()
+
+  @exportRpc("divvy.scatterplot.active.scores")
+  def setActiveScores(self, activeScores):
+    self.activeSelectionInformation["activeScores"] = activeScores
+    self.updateUserSelectionLutProperties()
+
   @exportRpc('divvy.scatterplot.lut.images.get')
   def getLutImages(self):
-        if not self._lutImages:
-            names = list(self.lutMap.keys())
-            self._lutImages = getTargetLutImages(names, 128)
+      if not self._lutImages:
+        names = list(self.lutMap.keys())
+        names = [ name for name in names if name != SELECTION_COLORMAP ]
+        self._lutImages = getTargetLutImages(names, 128)
 
-        return self._lutImages
+      return self._lutImages
 
   @exportRpc('divvy.scatterplot.camera.update')
   def updateCamera(self, mode):
@@ -249,8 +393,9 @@ class ScatterPlotProtocol(ParaViewWebProtocol):
     self.renderView.AxesGrid.DataScale = [ scale[0], scale[1], scale[2] ]
 
     # Transfer function may need rescaling.
-    colorArray = vtkSMPVRepresentationProxy.GetArrayInformationForColorArray(self.representation.SMProxy).GetName()
-    if colorArray != USER_SELECTION:
+    colorVTK = vtkSMPVRepresentationProxy.GetArrayInformationForColorArray(self.representation.SMProxy)
+    colorArray = colorVTK.GetName() if colorVTK else None
+    if colorArray and colorArray != USER_SELECTION:
       vtkSMPVRepresentationProxy.RescaleTransferFunctionToDataRange(self.representation.SMProxy, colorArray, 0, False, True)
 
     # reset the camera iff the scale changed.
