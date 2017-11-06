@@ -69,7 +69,10 @@ class _DivvyServer(pv_wslink.PVServerProtocol):
 
         dataProtocol = DivvyProtocol(_DivvyServer.fileToLoad)
         self.registerVtkWebProtocol(dataProtocol)
-        self.registerVtkWebProtocol(ScatterPlotProtocol(dataProtocol, colorManager))
+        scatterplot = ScatterPlotProtocol(dataProtocol, colorManager)
+        self.registerVtkWebProtocol(scatterplot)
+        dataProtocol.setScatterPlot(scatterplot)
+
         self.updateSecret(_DivvyServer.authKey)
 
 # =============================================================================
