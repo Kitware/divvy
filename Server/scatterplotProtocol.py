@@ -73,6 +73,22 @@ def readColorMaps(filepath):
 
     return None
 
+def buildLinearPiecewiseFunctionPoints(dataRange, pointSizeRange, presetOpt):
+  default = [ dataRange[0], pointSizeRange[0], 0.5, 0.0, dataRange[1], pointSizeRange[1], 0.5, 0.0 ]
+  if presetOpt == 'HighestBest':
+      return default
+  elif presetOpt == 'LowestBest':
+      return [ dataRange[0], pointSizeRange[1], 0.5, 0.0, dataRange[1], pointSizeRange[0], 0.5, 0.0 ]
+  elif presetOpt == 'MiddleBest':
+      dataMidPoint = dataRange[0] + ((dataRange[1] - dataRange[0]) / 2.0)
+      return [ dataRange[0], pointSizeRange[0], 0.5, 0.0, dataMidPoint, pointSizeRange[1], 0.5, 0.0, dataRange[1], pointSizeRange[0], 0.5, 0.0 ]
+  elif presetOpt == 'ExtremesBest':
+      dataMidPoint = dataRange[0] + ((dataRange[1] - dataRange[0]) / 2.0)
+      return [ dataRange[0], pointSizeRange[1], 0.5, 0.0, dataMidPoint, pointSizeRange[0], 0.5, 0.0, dataRange[1], pointSizeRange[1], 0.5, 0.0 ]
+  else:
+      print('ERROR: Unrecognized preset option "%s", using default')
+      return default
+
 # =============================================================================
 # Respond to RPC requests about a remote-rendered scatterplot
 # =============================================================================
@@ -85,9 +101,19 @@ class ScatterPlotProtocol(ParaViewWebProtocol):
     self.arrays = {}
     self.renderView = simple.CreateView('RenderView')
     self.renderView.InteractionMode = '3D'
+    self.renderView.SMProxy.GetRenderWindow().SetMultiSamples(0)
+
+    self.representationMap = self.createCustomShaderMap()
 
     self._lutImages = None
     self._colorMapName = ''
+
+    self.scaleTransferFunction = simple.CreatePiecewiseFunction(Points=[0.0, 0.3, 0.5, 0.0, 1.0, 0.05, 0.5, 0.0])
+    self.opacityTransferFunction = simple.CreatePiecewiseFunction(Points=[0.0, 0.3, 0.5, 0.0, 1.0, 0.05, 0.5, 0.0])
+    self.userSelScalePoints = [0.0, 0.3, 0.5, 0.0, 1.0, 0.05, 0.5, 0.0]
+    self.userSelOpacityPoints = [0.0, 0.3, 0.5, 0.0, 1.0, 0.05, 0.5, 0.0]
+    self.userSelPointSizeRange = [1, 3]
+
     module_path = os.path.abspath(__file__)
     pathToLuts = os.path.join(os.path.dirname(module_path), 'ColorMaps.json')
     self.lutMap = readColorMaps(pathToLuts)
@@ -147,6 +173,7 @@ class ScatterPlotProtocol(ParaViewWebProtocol):
   def updateScatterPlot(self, config):
     updateAxes = False
     updateColormap = False
+    sprites = config['usePointSprites']
 
     if not self.dataTable:
       # initialize everything
@@ -168,9 +195,9 @@ class ScatterPlotProtocol(ParaViewWebProtocol):
       self.representation.Representation = 'Surface'
       self.representation.PointSize = 5
       self.representation.Opacity = 1.0
+      self.representation.InterpolateScalarsBeforeMapping = 0
 
       self.representation.Visibility = 1
-
 
       self.renderView.AxesGrid = 'GridAxes3DActor'
       self.renderView.AxesGrid.Visibility = 1
@@ -233,6 +260,74 @@ class ScatterPlotProtocol(ParaViewWebProtocol):
         vtkSMPVRepresentationProxy.RescaleTransferFunctionToDataRange(self.representation.SMProxy, config['colorBy'], 0, False, True)
         self.colorManager.selectColorMap(self.representation.GetGlobalIDAsString(), config['colorMapName'])
 
+    sizeRange = [1.0, 3.0]
+    constPointSize = 3.0
+    pointSize = 2.0
+    try:
+      sizeRange = [float(config['pointSizeMin']), float(config['pointSizeMax'])]
+      constPointSize = float(config['constantPointSize'])
+      pointSize = float(config['pointSize'])
+    except:
+      print('Failed conversion', config['pointSizeMin'], config['pointSizeMax'], config['constantPointSize'], config['pointSize'])
+      pass
+
+    # Sprites are the ParaView Point Gaussian representation, and allow shader-based point drawing.
+    if sprites:
+      self.representation.Visibility = 0
+      self.representation.Representation = 'Point Gaussian'
+      # Needed for ParaView 5.4 - not sure if it'll mess up older ones.
+      self.representation.ShaderPreset = 'Custom'
+
+      reprInfo = self.representationMap['Black-edged circle']
+
+      if config['pointRepresentation'] and config['pointRepresentation'] is not '':
+        reprInfo = self.representationMap[config['pointRepresentation']]
+
+      self.representation.GaussianRadius = reprInfo['radius']
+      self.representation.CustomShader = reprInfo['shader']
+
+      # vary point size with array, maybe.
+      if config['pointSizeBy'] and config['pointSizeBy'] != '':
+        # sizeRange = [float(config['pointSizeMin']), float(config['pointSizeMax']) ]
+        dataRange = self.dataTable.GetColumnByName(config['pointSizeBy']).GetRange()
+        scaleFunction = str(config['pointSizeFunction'])
+        if config['pointSizeBy'] == USER_SELECTION:
+          if sizeRange[0] != self.userSelPointSizeRange[0] or sizeRange[1] != self.userSelPointSizeRange[1]:
+            self.userSelPointSizeRange[0] = sizeRange[0]
+            self.userSelPointSizeRange[1] = sizeRange[1]
+            self.updateUserSelectionLutProperties()
+          self.scaleTransferFunction.Points = self.userSelScalePoints
+        else:
+          self.scaleTransferFunction.Points = buildLinearPiecewiseFunctionPoints(dataRange, sizeRange, scaleFunction)
+
+        self.representation.ScaleTransferFunction = self.scaleTransferFunction
+        self.representation.SetScaleArray = config['pointSizeBy']
+        self.representation.ScaleByArray = 1
+      else :
+        self.representation.GaussianRadius = constPointSize / 3.0
+        self.representation.ScaleByArray = 0
+
+      # vary opacity with array, maybe.
+      if config['opacityBy'] and config['opacityBy'] != '' and config['opacityBy'] != USER_SELECTION \
+          and (config['colorBy'] != USER_SELECTION):
+        dataRange =self.dataTable.GetColumnByName(config['opacityBy']).GetRange()
+        opacityFunction = str(config['opacityFunction'])
+
+        self.opacityTransferFunction.Points = buildLinearPiecewiseFunctionPoints(dataRange, [0.0, 1.0], opacityFunction)
+
+        self.representation.OpacityTransferFunction = self.opacityTransferFunction
+        self.representation.OpacityArray = config['opacityBy']
+        self.representation.OpacityByArray = 1
+      else:
+        self.representation.OpacityByArray = 0
+        self.representation.Opacity = 1.0
+    else:
+      self.representation.Representation = 'Surface'
+      self.representation.PointSize = pointSize
+      self.representation.Opacity = 1.0
+
+    self.representation.Visibility = 1
+
     return { 'success': True }
 
   # build a new colormap and opacity function for the new 'user selection' array
@@ -281,7 +376,8 @@ class ScatterPlotProtocol(ParaViewWebProtocol):
     # usRange = [self.userSelPointSizeRange[0], self.userSelPointSizeRange[1]]
     usRange = [1.0, 3.0]
     usDelta = (usRange[1] - usRange[0]) / numScores
-    sizeStops = [usRange[0] + i*usDelta for i in range(numScores)] + [usRange[1]]
+    # unselected value is last, should be the minimum value.
+    sizeStops = [usRange[0] + (i+1)*usDelta for i in range(numScores - 1)] + [usRange[1], usRange[0]]
 
     if annoType == 'range':
       scoreIndex = annoScore[0]
@@ -294,7 +390,6 @@ class ScatterPlotProtocol(ParaViewWebProtocol):
         rgbPoints += [ selVal - delX ] + preset[presetOffset:presetOffset+3] + [ selVal + delX ] + preset[presetOffset:presetOffset+3]
         opacity = scoreOpacities[selVal]
         pwfPoints += [ selVal - delX, opacity, 0.5, 0.0, selVal + delX, opacity, 0.5, 0.0 ]
-        # TODO: unselected needs to be minimum.
         self.userSelScalePoints += [ selVal - delX, sizeStops[selVal], 0.5, 0.0, selVal + delX, sizeStops[selVal], 0.5, 0.0 ]
 
     elif annoType == 'partition':
@@ -408,3 +503,92 @@ class ScatterPlotProtocol(ParaViewWebProtocol):
     return {
       "scatter-plot": self.renderView.GetGlobalIDAsString()
     }
+
+  def createCustomShaderMap(self):
+      return {
+          'Sphere': {
+              'radius': 0.33333,
+              'shader': """
+                  //VTK::Color::Impl
+                  float dist = dot(offsetVCVSOutput.xy,offsetVCVSOutput.xy);
+                  if (dist > 9.0) {
+                    discard;
+                  } else {
+                    float scale = (9.0 - dist) / 9.0;
+                    ambientColor *= scale;
+                    diffuseColor *= scale;
+                  }
+              """
+          },
+          'Black-edged circle': {
+              'radius': 0.33333,
+              'shader': """
+                  //VTK::Color::Impl
+                  float dist = dot(offsetVCVSOutput.xy,offsetVCVSOutput.xy);
+                  if (dist > 9.0) {
+                    discard;
+                  } else if (dist > %s) {
+                    ambientColor = vec3(0.0, 0.0, 0.0);
+                    diffuseColor = vec3(0.0, 0.0, 0.0);
+                  }
+              """ % (9.0 * 0.85)
+          },
+          'Plain circle': {
+              'radius': 0.33333,
+              'shader': """
+                  //VTK::Color::Impl
+                  float dist = dot(offsetVCVSOutput.xy,offsetVCVSOutput.xy);
+                  if (dist > 9.0) {
+                    discard;
+                  }
+              """
+          },
+          'Triangle': {
+              'radius': 0.33333,
+              'shader': """
+                  //VTK::Color::Impl
+              """
+          },
+          'Square outline': {
+              'radius': 0.33333,
+              'shader': """
+                  //VTK::Color::Impl
+                  if (abs(offsetVCVSOutput.x) > 2.2 || abs(offsetVCVSOutput.y) > 2.2) {
+                    discard;
+                  }
+                  if (abs(offsetVCVSOutput.x) < 1.5 && abs(offsetVCVSOutput.y) < 1.5) {
+                    discard;
+                  }
+              """
+          },
+          'Black-edged square': {
+              'radius': 0.33333,
+              'shader': """
+                  //VTK::Color::Impl
+                  if (abs(offsetVCVSOutput.x) > 2.2 || abs(offsetVCVSOutput.y) > 2.2) {
+                    // We can't go out to the full 3 pixels or the top corners will be cut
+                    // off at the edges of the triangle, and we don't just want to increase
+                    // the radius and have to process more fragments, so we make squares a
+                    // bit smaller than circles.
+                    discard;
+                  } else if (abs(offsetVCVSOutput.x) > 2 || abs(offsetVCVSOutput.y) > 2) {
+                    ambientColor = vec3(0.0, 0.0, 0.0);
+                    diffuseColor = vec3(0.0, 0.0, 0.0);
+                  }
+              """
+          },
+          'Plain square': {
+              'radius': 0.33333,
+              'shader': """
+                  //VTK::Color::Impl
+                  if (abs(offsetVCVSOutput.x) > 2.2 || abs(offsetVCVSOutput.y) > 2.2) {
+                    // See comment in 'Black-edged square' about fitting square in triangle
+                    discard;
+                  }
+              """
+          },
+          'Gaussian Blur': {
+              'radius': 1.0,
+              'shader': ''
+          }
+      }

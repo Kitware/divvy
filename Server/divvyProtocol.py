@@ -426,7 +426,7 @@ class DivvyProtocol(ParaViewWebProtocol):
 
     else:
       print('empty selection')
-      self.selectedRows = { 'score': [-1], 'data': np.zeros(self.numRows) }
+      self.selectedRows = { 'score': [UNSELECTED_INDEX], 'data': np.zeros(self.numRows) }
 
     # translate selection into VTK data, for use by scatterplot
     self.SetSelection(numpy_to_vtk(self.selectedRows['data']))
