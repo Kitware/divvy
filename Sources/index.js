@@ -5,6 +5,7 @@ import 'babel-polyfill';
 import React            from 'react';
 import ReactDOM         from 'react-dom';
 
+import URLExtract from 'paraviewweb/src/Common/Misc/URLExtract';
 import SizeHelper from 'paraviewweb/src/Common/Misc/SizeHelper';
 import WorkbenchReact from './workbenchReact';
 
@@ -47,8 +48,13 @@ client.onReady(() => {
 // Exposed API
 // ----------------------------------------------------------------------------
 
-export function connect(userConfig) {
-  client.connect(userConfig);
+export function connect(userConfig, useArgsFromURL = false) {
+  const config = {};
+  if (useArgsFromURL) {
+    Object.assign(config, URLExtract.extractURLParameters());
+  }
+  Object.assign(config, userConfig);
+  client.connect(config);
 }
 
 export function autoStopServer(timeout = 60) {
