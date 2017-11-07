@@ -57,6 +57,7 @@ class _DivvyServer(pv_wslink.PVServerProtocol):
     @staticmethod
     def configure(args):
         _DivvyServer.fileToLoad = args.fileToLoad
+        _DivvyServer.authKey    = args.authKey
 
     def initialize(self):
         # Bring used components
