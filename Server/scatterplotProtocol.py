@@ -98,6 +98,8 @@ class ScatterPlotProtocol(ParaViewWebProtocol):
     self.divvyProtocol = divvyProtocol
     self.colorManager = colorManager
     self.dataTable = None
+    self.dataMesh = None
+    self.meshRepresentation = None
     self.arrays = {}
     self.renderView = simple.CreateView('RenderView')
     self.renderView.InteractionMode = '3D'
@@ -168,16 +170,24 @@ class ScatterPlotProtocol(ParaViewWebProtocol):
     simple.ResetCamera(self.renderView)
     self.renderView.CenterOfRotation = self.renderView.CameraFocalPoint
 
+  @exportRpc('divvy.scatterplot.mesh')
+  def hasMesh(self):
+    return True if self.divvyProtocol.getMesh() else False
+
   # make or update a scatter plot
   @exportRpc('divvy.scatterplot.update')
   def updateScatterPlot(self, config):
     updateAxes = False
     updateColormap = False
     sprites = config['usePointSprites']
+    showMesh = config['showMesh']
 
     if not self.dataTable:
       # initialize everything
       self.dataTable = self.divvyProtocol.getDataWithSelection()
+      if self.divvyProtocol.getMesh():
+        self.dataMesh = simple.TrivialProducer()
+        self.dataMesh.GetClientSideObject().SetOutput(self.divvyProtocol.getMesh())
 
       # copy data from the main protocol, and set up pipelilne
       trivProducer = simple.TrivialProducer()
@@ -248,7 +258,7 @@ class ScatterPlotProtocol(ParaViewWebProtocol):
       self.renderView.AxesGrid.XTitle = config['x']
       self.renderView.AxesGrid.YTitle = config['y']
       self.renderView.AxesGrid.ZTitle = config['z']
-      self.updateAxis()
+      self.updateAxis(showMesh and self.dataMesh)
 
     if updateColormap:
       vtkSMPVRepresentationProxy.SetScalarColoring(self.representation.SMProxy, config['colorBy'], 0)
@@ -328,6 +338,19 @@ class ScatterPlotProtocol(ParaViewWebProtocol):
 
     self.representation.Visibility = 1
 
+    # Mesh handling
+    if self.dataMesh:
+      if showMesh:
+        if not self.meshRepresentation:
+          self.meshRepresentation = simple.Show(self.dataMesh, self.renderView)
+          self.meshRepresentation.Opacity = 0.5
+
+        self.meshRepresentation.Visibility = 1
+        self.updateAxis(True)
+      elif self.meshRepresentation:
+        self.meshRepresentation.Visibility = 0
+
+
     return { 'success': True }
 
   # build a new colormap and opacity function for the new 'user selection' array
@@ -373,8 +396,7 @@ class ScatterPlotProtocol(ParaViewWebProtocol):
     ### so we can show/hide the appropriate subsets of points using a dedicated
     ### opacity transfer function on the lookup table
 
-    # usRange = [self.userSelPointSizeRange[0], self.userSelPointSizeRange[1]]
-    usRange = [1.0, 3.0]
+    usRange = [self.userSelPointSizeRange[0], self.userSelPointSizeRange[1]]
     usDelta = (usRange[1] - usRange[0]) / numScores
     # unselected value is last, should be the minimum value.
     sizeStops = [usRange[0] + (i+1)*usDelta for i in range(numScores - 1)] + [usRange[1], usRange[0]]
@@ -473,7 +495,7 @@ class ScatterPlotProtocol(ParaViewWebProtocol):
     return { 'success': True }
 
   @exportRpc('divvy.scatterplot.axes.update')
-  def updateAxis(self):
+  def updateAxis(self, showMesh = False):
     # rescale via the representation
     scaleBounds = self.tableToPoints.GetClientSideObject().GetOutputDataObject(0).GetBounds()
     scale = self.representation.Scale
@@ -483,9 +505,13 @@ class ScatterPlotProtocol(ParaViewWebProtocol):
     for i in range(3):
       if scaleBounds[i*2 + 1] != scaleBounds[i*2]:
         scale[i] = 100.0 / (scaleBounds[i*2 + 1] - scaleBounds[i*2])
-    self.representation.Scale = scale
 
-    self.renderView.AxesGrid.DataScale = [ scale[0], scale[1], scale[2] ]
+    if showMesh:
+      self.representation.Scale = [1, 1, 1]
+      self.renderView.AxesGrid.DataScale = [1, 1, 1]
+    else:
+      self.representation.Scale = scale
+      self.renderView.AxesGrid.DataScale = [scale[0], scale[1], scale[2]]
 
     # Transfer function may need rescaling.
     colorVTK = vtkSMPVRepresentationProxy.GetArrayInformationForColorArray(self.representation.SMProxy)
@@ -494,7 +520,7 @@ class ScatterPlotProtocol(ParaViewWebProtocol):
       vtkSMPVRepresentationProxy.RescaleTransferFunctionToDataRange(self.representation.SMProxy, colorArray, 0, False, True)
 
     # reset the camera iff the scale changed.
-    if scale != lastScale:
+    if scale != lastScale or showMesh:
       self.resetCamera()
     return { 'success': True }
 

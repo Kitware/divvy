@@ -118,6 +118,7 @@ class DivvyProtocol(ParaViewWebProtocol):
     self.inputFile = inputFile
     self.dataTable = None
     self.dataTableSelection = None
+    self.dataMesh = None
     # if we calc a full histogram, cache it
     self.hist2DCache = {}
     self.hist1DCache = {}
@@ -130,8 +131,12 @@ class DivvyProtocol(ParaViewWebProtocol):
 
   def getData(self):
     return self.dataTable
+
   def getDataWithSelection(self):
     return self.dataTableSelection
+
+  def getMesh(self):
+    return self.dataMesh
 
   def setScatterPlot(self, sp):
     self.scatterPlot = sp
@@ -152,6 +157,7 @@ class DivvyProtocol(ParaViewWebProtocol):
         reader = simple.OpenDataFile(self.inputFile)
         reader.UpdatePipeline()
         ds = reader.GetClientSideObject().GetOutputDataObject(0)
+        self.dataMesh = ds
         if ds.IsA('vtkTable'):
           self.dataTable = ds
         else:
