@@ -24,6 +24,7 @@ function divvyClient(publicAPI, model) {
           Divvy: session =>
             ({
               getFields: () => session.call('divvy.fields.get'),
+              hasMesh: () => session.call('divvy.scatterplot.mesh'),
               requestHistograms: request => session.call('divvy.histograms.request', [request]),
               requestAnnotationHistograms: request => session.call('divvy.histograms.annotation.request', [request]),
               subscribe1DHistogram: callback => session.subscribe('divvy.histogram1D.push', callback),
@@ -34,17 +35,20 @@ function divvyClient(publicAPI, model) {
               // updateScatterPlot: params => busy(session.call('erdc.ers.viz.update.scatter.plot', [...params])),
               getLutImages: () => busy(session.call('divvy.scatterplot.lut.images.get', [])),
               updateCamera: mode => busy(session.call('divvy.scatterplot.camera.update', [mode])),
-              updateAxis: () => busy(session.call('divvy.scatterplot.axes.update', [])),
+              updateAxis: (showMesh = false) => busy(session.call('divvy.scatterplot.axes.update', [showMesh])),
               getViews: () => busy(session.call('divvy.scatterplot.views.get')),
             }),
         },
       );
       publicAPI.serverAPI().getFields().then((result) => {
         model.fieldList = result;
+        publicAPI.serverAPI().hasMesh().then((hasMesh) => {
+          model.hasMesh = hasMesh;
+          ready = true;
 
-        ready = true;
-        // we have an active connection and client, let everyone know.
-        readyCallbacks.forEach((callback) => { if (callback) callback(); });
+          // we have an active connection and client, let everyone know.
+          readyCallbacks.forEach((callback) => { if (callback) callback(); });
+        });
       }, (errResult) => {
         ready = false;
         console.error('failed to fetch field list', errResult);
@@ -81,7 +85,7 @@ const DEFAULT_VALUES = {
 export function extend(publicAPI, model, initialValues = {}) {
   Object.assign(model, DEFAULT_VALUES, initialValues);
 
-  CompositeClosureHelper.get(publicAPI, model, ['fieldList']);
+  CompositeClosureHelper.get(publicAPI, model, ['fieldList', 'hasMesh']);
 
   divvyClient(publicAPI, model);
 }

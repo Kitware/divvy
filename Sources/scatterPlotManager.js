@@ -63,6 +63,9 @@ export default class ScatterPlotManager {
       opacityBy: '',
       opacityFunction: 'HighestBest',
       showRenderStats: false,
+      hasMesh: provider.getClient().getHasMesh(),
+      showMesh: false,
+      enableStats: false,
     };
 
     // Get remote view information
@@ -170,6 +173,12 @@ export default class ScatterPlotManager {
       sizeOptions.constantSize = Number(model.constantPointSize);
     }
 
+    if (model.showMesh) {
+      model.x = 'x Mesh';
+      model.y = 'y Mesh';
+      model.z = 'z Mesh';
+    }
+
     return new Promise((a, r) => {
       this.client.serverAPI().updateScatterPlot(model)
       //   [
@@ -204,7 +213,7 @@ export default class ScatterPlotManager {
   }
 
   resetCamera(id) {
-    this.client.serverAPI().updateAxis()
+    this.client.serverAPI().updateAxis(this.model.showMesh)
       .then(
         (resp) => {
           if (id && this.remoteRenderers[id]) {
