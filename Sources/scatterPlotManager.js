@@ -212,8 +212,8 @@ export default class ScatterPlotManager {
     });
   }
 
-  resetCamera(id) {
-    this.client.serverAPI().updateAxis(this.model.showMesh)
+  resetCamera(id, force = false) {
+    this.client.serverAPI().updateAxis(this.model.showMesh, force)
       .then(
         (resp) => {
           if (id && this.remoteRenderers[id]) {

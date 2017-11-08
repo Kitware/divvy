@@ -34,8 +34,8 @@ NUMERIC_TYPES = {
 }
 
 scoreDefinitions = [
-  { 'name': 'Interesting', 'color': '#66c2a5', 'value': 1 },
-  { 'name': 'Exciting', 'color': '#fc8d62', 'value': 2 },
+  { 'name': 'Examine', 'color': '#66c2a5', 'value': 1 },
+  { 'name': 'Great', 'color': '#fc8d62', 'value': 2 },
   { 'name': 'Neutral', 'color': '#8da0cb', 'value': 3 },
   { 'name': 'Bland', 'color': '#e78ac3', 'value': 4 },
   { 'name': 'Other', 'color': '#a6d854', 'value': 5 }
@@ -141,7 +141,7 @@ class DivvyProtocol(ParaViewWebProtocol):
   def setScatterPlot(self, sp):
     self.scatterPlot = sp
 
-  # return a dictionary of numeric column names and their ranges.
+  # return a dictionary of numeric column names and their ranges, plus other initialization info.
   @exportRpc('divvy.fields.get')
   def getFields(self):
     if not self.dataTable:
@@ -177,7 +177,12 @@ class DivvyProtocol(ParaViewWebProtocol):
 
     self.initializeSelection()
 
-    return self.fields
+    return {
+      'fields': self.fields,
+      'scores': scoreDefinitions,
+      'numRows': self.numRows,
+      'hasMesh': True if self.getMesh() else False
+    }
 
   def initializeSelection(self):
     if not self.dataTableSelection:
@@ -338,7 +343,41 @@ class DivvyProtocol(ParaViewWebProtocol):
       self.lastHist2DList = request['hist2D']
     return { 'success': True }
 
+  def pushCountsForActiveAnnotation(self, annot):
+      """Return an array of counts for each score."""
+      # get unique list of score indices from annot, and the unselected index.
+      # can't use this easy way, because return_counts isn't in numpy 1.8, only 1.9+
+      # counts = np.array(np.unique(selRows,return_counts=True)).T
 
+      uniqueScores = np.unique(annot['score'])
+      counts = np.zeros(len(uniqueScores) + 1)
+      selRows = self.selectedRows['data']
+      for i in range(len(uniqueScores)):
+        counts[i] = np.sum(selRows == uniqueScores[i])
+      # anything left is unselected.
+      counts[-1] = self.numRows - np.sum(counts)
+
+      seln = annot['selection']
+      # annoInfo is information we tack onto the push notification so that
+      # responders can avoid presenting stale or out-of-order results:
+      annoInfo = [ {
+          'annotation': annot['id'] if 'id' in annot else 'unknown',
+          'annotationGeneration': annot['generation'],
+          'selectionGeneration': annot['selection']['generation']
+          } ]
+      # numpy.int64 isn't json serializable on windows. Cast to int.
+      for i in range(len(uniqueScores)):
+        scoreIndex = int(uniqueScores[i])
+        result = {
+          'type': 'counts',
+          'data': {
+            'annotationInfo': annoInfo[0] if len(annoInfo) == 1 else annoInfo,
+            'role': { 'selected': True, 'score': scoreIndex },
+            'count': int(counts[i]),
+            'total': self.numRows
+            }
+          }
+        self.publish('divvy.selection.count.push', result)
 
   @exportRpc('divvy.annotation.update')
   def updateAnnotation(self, annot):
@@ -437,6 +476,8 @@ class DivvyProtocol(ParaViewWebProtocol):
     # translate selection into VTK data, for use by scatterplot
     self.SetSelection(numpy_to_vtk(self.selectedRows['data']))
     self.scatterPlot.setActiveAnnotation(annot)
+    # count selected rows, for count toolbar.
+    self.pushCountsForActiveAnnotation(annot)
 
     # if someone is listening to hist2D selections....
     if self.lastHist2DList:

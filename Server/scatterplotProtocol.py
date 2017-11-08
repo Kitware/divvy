@@ -17,61 +17,61 @@ import vtk, vtk.util.numpy_support
 # from vtk.util.numpy_support import vtk_to_numpy, numpy_to_vtk
 from vtk.vtkPVServerManagerRendering import vtkSMPVRepresentationProxy
 
-# import numpy as np
+import numpy as np
 
 USER_SELECTION = "user selection"
 SELECTION_COLORMAP = "Selection Categorical"
 
 # assign a lut image based on json colormap
 def getTargetLutImages(presetNames, numSamples):
-    colorArray = vtk.vtkUnsignedCharArray()
-    colorArray.SetNumberOfComponents(3)
-    colorArray.SetNumberOfTuples(numSamples)
+  colorArray = vtk.vtkUnsignedCharArray()
+  colorArray.SetNumberOfComponents(3)
+  colorArray.SetNumberOfTuples(numSamples)
 
-    pxm = simple.servermanager.ProxyManager()
-    lutProxy = pxm.NewProxy('lookup_tables', 'PVLookupTable')
-    lut = lutProxy.GetClientSideObject()
-    dataRange = lut.GetRange()
-    delta = (dataRange[1] - dataRange[0]) / float(numSamples)
+  pxm = simple.servermanager.ProxyManager()
+  lutProxy = pxm.NewProxy('lookup_tables', 'PVLookupTable')
+  lut = lutProxy.GetClientSideObject()
+  dataRange = lut.GetRange()
+  delta = (dataRange[1] - dataRange[0]) / float(numSamples)
 
-    # Add the color array to an image data
-    imgData = vtk.vtkImageData()
-    imgData.SetDimensions(numSamples, 1, 1)
-    imgData.GetPointData().SetScalars(colorArray)
+  # Add the color array to an image data
+  imgData = vtk.vtkImageData()
+  imgData.SetDimensions(numSamples, 1, 1)
+  imgData.GetPointData().SetScalars(colorArray)
 
-    # base-64 encode the image as png, using no compression
-    encoder = vtk.vtkDataEncoder()
+  # base-64 encode the image as png, using no compression
+  encoder = vtk.vtkDataEncoder()
 
-    result = {}
+  result = {}
 
-    for name in presetNames:
-        lutProxy.ApplyPreset(name, True)
-        rgb = [ 0, 0, 0 ]
-        for i in range(numSamples):
-            lut.GetColor(dataRange[0] + float(i) * delta, rgb)
-            r = int(round(rgb[0] * 255))
-            g = int(round(rgb[1] * 255))
-            b = int(round(rgb[2] * 255))
-            colorArray.SetTuple3(i, r, g, b)
+  for name in presetNames:
+    lutProxy.ApplyPreset(name, True)
+    rgb = [ 0, 0, 0 ]
+    for i in range(numSamples):
+      lut.GetColor(dataRange[0] + float(i) * delta, rgb)
+      r = int(round(rgb[0] * 255))
+      g = int(round(rgb[1] * 255))
+      b = int(round(rgb[2] * 255))
+      colorArray.SetTuple3(i, r, g, b)
 
-        result[name] = encoder.EncodeAsBase64Png(imgData, 0)
+    result[name] = encoder.EncodeAsBase64Png(imgData, 0)
 
-    simple.Delete(lutProxy)
+  simple.Delete(lutProxy)
 
-    return result
+  return result
 
 def readColorMaps(filepath):
-    with open(filepath, 'r') as fd:
-        data = json.load(fd)
+  with open(filepath, 'r') as fd:
+    data = json.load(fd)
 
-    if data:
-        colorMaps = {}
-        for idx in range(len(data)):
-            nextLut = data[idx]
-            colorMaps[nextLut['Name']] = nextLut
-        return colorMaps
+  if data:
+    colorMaps = {}
+    for idx in range(len(data)):
+      nextLut = data[idx]
+      colorMaps[nextLut['Name']] = nextLut
+    return colorMaps
 
-    return None
+  return None
 
 def buildLinearPiecewiseFunctionPoints(dataRange, pointSizeRange, presetOpt):
   default = [ dataRange[0], pointSizeRange[0], 0.5, 0.0, dataRange[1], pointSizeRange[1], 0.5, 0.0 ]
@@ -140,6 +140,7 @@ class ScatterPlotProtocol(ParaViewWebProtocol):
     categoricalColors = []
     categories = []
 
+    unselectedScore = 0
     for scoreObj in self._serverScores:
       colorString = scoreObj['color']
       m = hexRgbRegex.match(colorString)
@@ -149,13 +150,15 @@ class ScatterPlotProtocol(ParaViewWebProtocol):
         b = int(m.group(3), 16) / 255.0
         categoricalColors += [ r, g, b ]
         categories += [ scoreObj['value'], scoreObj['name']]
+        unselectedScore = min(unselectedScore, scoreObj['value'])
 
       # make all scores active by default.
-      self.activeSelectionInformation['activeScores'].append(scoreObj['value'])
+      self.activeSelectionInformation['activeScores'].append(scoreObj['index'])
 
     # End with a grey for "unselected"
     categoricalColors += [ 0.6, 0.6, 0.6 ]
-    categories += [ min(self.activeSelectionInformation['activeScores']) - 1, 'unselected']
+    categories += [ unselectedScore, 'unselected']
+    self.activeSelectionInformation['activeScores'].append(self._unselectedIndex)
 
     self.lutMap[SELECTION_COLORMAP] = {
       "Name" : SELECTION_COLORMAP,
@@ -163,16 +166,12 @@ class ScatterPlotProtocol(ParaViewWebProtocol):
       "IndexedColors" : categoricalColors,
       "Annotations": categories
     }
-    print(self.lutMap[SELECTION_COLORMAP])
+    # print(self.lutMap[SELECTION_COLORMAP])
 
   def resetCamera(self):
     simple.Render(self.renderView)
     simple.ResetCamera(self.renderView)
     self.renderView.CenterOfRotation = self.renderView.CameraFocalPoint
-
-  @exportRpc('divvy.scatterplot.mesh')
-  def hasMesh(self):
-    return True if self.divvyProtocol.getMesh() else False
 
   # make or update a scatter plot
   @exportRpc('divvy.scatterplot.update')
@@ -380,7 +379,8 @@ class ScatterPlotProtocol(ParaViewWebProtocol):
     annoScore = activeAnnotation['score']
 
     # append a 0 so unselected scores don't show by default.
-    scoreOpacities = [ 1.0 if score['value'] in activeScores else 0.0 for score in self._serverScores ] + [0]
+    scoreOpacities = [ 1.0 if score['index'] in activeScores else 0.0 for score in self._serverScores ] + \
+      [1.0 if self._unselectedIndex in activeScores else 0.0]
 
     numScores = len(self._serverScores)
     pwfPoints = []
@@ -403,11 +403,11 @@ class ScatterPlotProtocol(ParaViewWebProtocol):
 
     if annoType == 'range':
       scoreIndex = annoScore[0]
-      presetOffset = scoreIndex * 3
       rgbPoints = []
       pwfPoints = []
       self.userSelScalePoints = []
       for selVal in [scoreIndex, self._unselectedIndex]:
+        presetOffset = selVal * 3
         # add the selected color
         rgbPoints += [ selVal - delX ] + preset[presetOffset:presetOffset+3] + [ selVal + delX ] + preset[presetOffset:presetOffset+3]
         opacity = scoreOpacities[selVal]
@@ -495,7 +495,7 @@ class ScatterPlotProtocol(ParaViewWebProtocol):
     return { 'success': True }
 
   @exportRpc('divvy.scatterplot.axes.update')
-  def updateAxis(self, showMesh = False):
+  def updateAxis(self, showMesh = False, forceReset = False):
     # rescale via the representation
     scaleBounds = self.tableToPoints.GetClientSideObject().GetOutputDataObject(0).GetBounds()
     scale = self.representation.Scale
@@ -520,7 +520,8 @@ class ScatterPlotProtocol(ParaViewWebProtocol):
       vtkSMPVRepresentationProxy.RescaleTransferFunctionToDataRange(self.representation.SMProxy, colorArray, 0, False, True)
 
     # reset the camera iff the scale changed.
-    if scale != lastScale or showMesh:
+    if forceReset or not np.allclose(scale, lastScale):
+      print("updateAxis resetCamera", scale, lastScale)
       self.resetCamera()
     return { 'success': True }
 

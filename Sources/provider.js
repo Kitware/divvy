@@ -29,15 +29,8 @@ function divvyProvider(publicAPI, model) {
     publicAPI.assignLegend(['colors', 'shapes']);
 
     // activate scoring gui
-    const scores = [
-      { name: 'Interesting', color: '#66c2a5', value: 1 },
-      { name: 'Exciting', color: '#fc8d62', value: 2 },
-      { name: 'Neutral', color: '#8da0cb', value: 3 },
-      { name: 'Bland', color: '#e78ac3', value: 4 },
-      { name: 'Other', color: '#a6d854', value: 5 },
-    ];
-    publicAPI.setScores(scores);
-    publicAPI.setDefaultScore(0);
+    publicAPI.setScores(model.client.getScores());
+    publicAPI.setDefaultScore(2);
 
     // whenever the list of 2D histogram subscriptions change,
     // request any that we don't have in our cache.
@@ -97,6 +90,18 @@ function divvyProvider(publicAPI, model) {
         console.error('Non array response from subscribe1DHistogram');
       }
     }));
+    model.subscriptions.push(model.client.serverAPI().subscribeSelectionCount((data) => {
+      if (Array.isArray(data)) {
+        data.forEach((item) => {
+          // this is 'count' data - for each score, a count of how many rows
+          // fall under that score.
+          publicAPI.setSelectionData(item);
+        });
+      } else {
+        console.error('Non array response from subscribeSelectionCount');
+      }
+    }));
+
     publicAPI.onAnnotationChange((annotation) => {
       // Capture any partition annotation
       if (annotation.selection.type === 'partition') {
@@ -118,6 +123,8 @@ function divvyProvider(publicAPI, model) {
   publicAPI.setHistogram2dProvider(publicAPI);
 
   publicAPI.getClient = () => model.client;
+
+  publicAPI.getDataRowCount = () => model.client.getNumberOfRows();
 }
 
 const DEFAULT_VALUES = {
