@@ -18,6 +18,7 @@ import BusyFeedback from 'paraviewweb/src/React/Widgets/BusyFeedback';
 import CountToolbar from 'paraviewweb/src/React/Widgets/CountToolbar';
 import AnnotationEditorToggleTool from 'paraviewweb/src/React/ToggleTools/AnnotationEditor';
 import FieldSelectorToggleTool from 'paraviewweb/src/React/ToggleTools/FieldSelector';
+import ParallelCoordinatesToggleTool from 'paraviewweb/src/React/ToggleTools/ParallelCoordinates';
 import WorkbenchLayoutToggleTool from 'paraviewweb/src/React/ToggleTools/WorkbenchLayout';
 import ScatterPlotControlToggleTool from 'paraviewweb/src/React/ToggleTools/ScatterPlotControl';
 import ScatterPlotCameraControl from 'paraviewweb/src/React/Widgets/ScatterPlotCameraControl';
@@ -165,7 +166,7 @@ export default class WorkbenchReact extends React.Component {
 
   updateActiveScores(activeScores) {
     this.props.provider.getClient().serverAPI().setActiveScores(activeScores).then(() => {
-      this.manager.getRemoteRenderer('workbench-scatterplot').render();
+      this.manager.getRemoteRenderer('workbench-scatterplot').render(true);
     });
 
     if (this.parallelCoordinates) {
@@ -211,6 +212,14 @@ export default class WorkbenchReact extends React.Component {
             onActiveWindow={this.onActiveWindow}
             provider={this.props.provider}
             overlayVisible={this.props.provider.getActiveFieldNames().length <= 1}
+          />
+          <ParallelCoordinatesToggleTool
+            activeWindow={this.state.activeWindow}
+            onActiveWindow={this.onActiveWindow}
+            provider={this.props.provider}
+
+            showOnlySelection={this.state.activeScores.indexOf(this.unselectedScoreIndex) === -1}
+            partitionScores={this.state.activeScores.filter(s => s < this.unselectedScoreIndex)}
           />
           { this.state.scatterPlotVisible ?
             <ScatterPlotControlToggleTool
