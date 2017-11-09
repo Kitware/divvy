@@ -17,7 +17,7 @@
         "commander": "2.11.0",
         "shelljs": "0.7.8",
         "gh-pages": "1.0.0",
-        "paraviewweb": "2.5.19",
+        "paraviewweb": "2.5.20",
         "react": "15.3.1",
         "react-dom": "15.3.1"
     },
