@@ -4,7 +4,6 @@ import React from 'react';
 import Workbench from 'paraviewweb/src/Component/Native/Workbench';
 import ReactAdapter from 'paraviewweb/src/Component/React/ReactAdapter';
 import ComponentToReact from 'paraviewweb/src/Component/React/ComponentToReact';
-// import WorkbenchController from 'paraviewweb/src/Component/React/WorkbenchController';
 
 // import CompositeClosureHelper from 'paraviewweb/src/Common/Core/CompositeClosureHelper';
 
@@ -12,13 +11,14 @@ import HistogramSelector from 'paraviewweb/src/InfoViz/Native/HistogramSelector'
 import FieldSelector from 'paraviewweb/src/InfoViz/Native/FieldSelector';
 import MutualInformationDiagram from 'paraviewweb/src/InfoViz/Native/MutualInformationDiagram';
 import ParallelCoordinates from 'paraviewweb/src/InfoViz/Native/ParallelCoordinates';
-// import RemoteRenderer from 'paraviewweb/src/NativeUI/Canvas/RemoteRenderer';
 
 import AnnotationEditorWidget from 'paraviewweb/src/React/Widgets/AnnotationEditorWidget';
 
 import BusyFeedback from 'paraviewweb/src/React/Widgets/BusyFeedback';
+import CountToolbar from 'paraviewweb/src/React/Widgets/CountToolbar';
 import AnnotationEditorToggleTool from 'paraviewweb/src/React/ToggleTools/AnnotationEditor';
 import FieldSelectorToggleTool from 'paraviewweb/src/React/ToggleTools/FieldSelector';
+import ParallelCoordinatesToggleTool from 'paraviewweb/src/React/ToggleTools/ParallelCoordinates';
 import WorkbenchLayoutToggleTool from 'paraviewweb/src/React/ToggleTools/WorkbenchLayout';
 import ScatterPlotControlToggleTool from 'paraviewweb/src/React/ToggleTools/ScatterPlotControl';
 import ScatterPlotCameraControl from 'paraviewweb/src/React/Widgets/ScatterPlotCameraControl';
@@ -30,10 +30,12 @@ export default class WorkbenchReact extends React.Component {
     super(props);
     this.state = {
       scatterPlotVisible: false,
+      activeScores: [],
     };
 
     this.onActiveWindow = this.onActiveWindow.bind(this);
     this.resize = this.resize.bind(this);
+    this.updateActiveScores = this.updateActiveScores.bind(this);
   }
 
   componentWillMount() {
@@ -48,12 +50,19 @@ export default class WorkbenchReact extends React.Component {
     const diag = MutualInformationDiagram.newInstance({ provider });
     diag.propagateAnnotationInsteadOfSelection(true, 0, 1);
 
-    const parallelCoordinates = ParallelCoordinates.newInstance({ provider });
-    parallelCoordinates.propagateAnnotationInsteadOfSelection(true, 0, 1);
+    this.parallelCoordinates = ParallelCoordinates.newInstance({ provider });
+    this.parallelCoordinates.propagateAnnotationInsteadOfSelection(true, 0, 1);
+    this.scores = provider.getScores();
+    // 'unselected' or unscored data is represented by an index equal to the number of scores.
+    this.unselectedScoreIndex = this.scores.length;
+    // all scores active initially, including the 'unselected' value, the last index.
+    const activeScores = this.scores.map(score => score.index);
+    activeScores.push(this.unselectedScoreIndex);
+    this.setState({ activeScores });
 
     const annotationWidgetProps = {
       annotation: null,
-      scores: provider.getScores(),
+      scores: this.scores,
       ranges: provider.getFieldNames().reduce((ranges, field) => {
         // Dict: key is field name, value is the field's range [min, max]
         ranges[field] = provider.getField(field).range;
@@ -85,7 +94,7 @@ export default class WorkbenchReact extends React.Component {
         viewport: 1,
       },
       'Parallel Coordinates': {
-        component: parallelCoordinates,
+        component: this.parallelCoordinates,
         viewport: 3,
       },
       'Annotation Editor': {
@@ -155,6 +164,22 @@ export default class WorkbenchReact extends React.Component {
     this.setState({ activeWindow });
   }
 
+  updateActiveScores(activeScores) {
+    this.props.provider.getClient().serverAPI().setActiveScores(activeScores).then(() => {
+      this.manager.getRemoteRenderer('workbench-scatterplot').render(true);
+    });
+
+    if (this.parallelCoordinates) {
+      // filter the unselected index
+      this.parallelCoordinates.setVisibleScoresForSelection(activeScores.filter(s => s < this.unselectedScoreIndex));
+      // background is shown if unselected is in the list.
+      this.parallelCoordinates.setShowOnlySelection(activeScores.indexOf(this.unselectedScoreIndex) === -1);
+      this.parallelCoordinates.render();
+    }
+
+    this.setState({ activeScores });
+  }
+
   resize() {
     if (this.workbench) {
       this.workbench.resize();
@@ -165,6 +190,11 @@ export default class WorkbenchReact extends React.Component {
       <div className={style.container}>
         <div className={style.toolbar}>
           <BusyFeedback provider={this.props.provider} />
+          <CountToolbar
+            provider={this.props.provider}
+            activeScores={this.state.activeScores}
+            onChange={this.updateActiveScores}
+          />
           <WorkbenchLayoutToggleTool
             activeWindow={this.state.activeWindow}
             onActiveWindow={this.onActiveWindow}
@@ -183,6 +213,14 @@ export default class WorkbenchReact extends React.Component {
             provider={this.props.provider}
             overlayVisible={this.props.provider.getActiveFieldNames().length <= 1}
           />
+          <ParallelCoordinatesToggleTool
+            activeWindow={this.state.activeWindow}
+            onActiveWindow={this.onActiveWindow}
+            provider={this.props.provider}
+
+            showOnlySelection={this.state.activeScores.indexOf(this.unselectedScoreIndex) === -1}
+            partitionScores={this.state.activeScores.filter(s => s < this.unselectedScoreIndex)}
+          />
           { this.state.scatterPlotVisible ?
             <ScatterPlotControlToggleTool
               activeWindow={this.state.activeWindow}
@@ -190,9 +228,8 @@ export default class WorkbenchReact extends React.Component {
               provider={this.props.provider}
               scatterPlotManager={this.manager}
               scatterPlotId="workbench"
-              // TODO
-              activeScores={[0, 1, 2]}
-              onActiveScoresChange={() => { console.log('update active scores'); }}
+              activeScores={this.state.activeScores}
+              onActiveScoresChange={this.updateActiveScores}
               overlayVisible={this.state.scatterPlotVisible}
               ref={(c) => { this.scatterPlotControl = c; }}
             /> : null
