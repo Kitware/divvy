@@ -438,8 +438,8 @@ class ScatterPlotProtocol(ParaViewWebProtocol):
       print ('Unknown annotation selection type: %s' % annoType)
       return
 
-    print('rgbPoints', rgbPoints)
-    print('pwfPoints', pwfPoints)
+    # print('rgbPoints', rgbPoints)
+    # print('pwfPoints', pwfPoints)
     lutProxy.RGBPoints = rgbPoints
     lutProxy.ScalarRangeInitialized = 1.0
 
@@ -521,7 +521,7 @@ class ScatterPlotProtocol(ParaViewWebProtocol):
 
     # reset the camera iff the scale changed.
     if forceReset or not np.allclose(scale, lastScale):
-      print("updateAxis resetCamera", scale, lastScale)
+      # print("updateAxis resetCamera", scale, lastScale)
       self.resetCamera()
     return { 'success': True }
 

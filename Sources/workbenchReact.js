@@ -43,7 +43,10 @@ export default class WorkbenchReact extends React.Component {
 
     const { provider } = this.props;
     // Create viz components
-    const histogramSelector = HistogramSelector.newInstance({ provider });
+    const histogramSelector = HistogramSelector.newInstance({
+      provider,
+      showUncertainty: this.props.showUncertainty,
+    });
 
     const fieldSelector = FieldSelector.newInstance({ provider });
 
@@ -206,6 +209,7 @@ export default class WorkbenchReact extends React.Component {
             activeWindow={this.state.activeWindow}
             onActiveWindow={this.onActiveWindow}
             provider={this.props.provider}
+            showUncertainty={this.props.showUncertainty}
           />
           <FieldSelectorToggleTool
             activeWindow={this.state.activeWindow}
@@ -251,6 +255,10 @@ export default class WorkbenchReact extends React.Component {
 WorkbenchReact.propTypes = {
   // eslint-disable-next-line
   provider: React.PropTypes.object.isRequired,
+  // eslint-disable-next-line
+  showUncertainty: React.PropTypes.bool,
 };
 
-WorkbenchReact.defaultProps = {};
+WorkbenchReact.defaultProps = {
+  showUncertainty: false,
+};

@@ -35,7 +35,7 @@ function divvyProvider(publicAPI, model) {
     // whenever the list of 2D histogram subscriptions change,
     // request any that we don't have in our cache.
     publicAPI.onHistogram2DSubscriptionChange((request) => {
-      const { id, variables, metadata } = request;
+      const { id, variables /* , metadata */ } = request;
       // { id: 0, variables: [["2 point shots percentage", "2 point shots percentage"],...],
       // metadata: {numberOfBins: 32, partial: false, symmetric: true}, }
       if (variables.length > 0) {
@@ -46,7 +46,7 @@ function divvyProvider(publicAPI, model) {
           }
         });
         if (needList.length > 0) {
-          console.log(id, variables, metadata);
+          // console.log(id, variables, metadata);
           model.client.serverAPI().requestHistograms({ hist2D: needList });
         }
       }

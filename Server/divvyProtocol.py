@@ -255,7 +255,7 @@ class DivvyProtocol(ParaViewWebProtocol):
 
   def calc2DHistogram(self, key, numBins):
     result = np.zeros((numBins, numBins))
-    print(key[0], key[1])
+    # print(key[0], key[1])
     vtkX = self.dataTable.GetColumnByName(key[0])
     vtkY = self.dataTable.GetColumnByName(key[1])
     xrng = vtkX.GetRange()
@@ -323,7 +323,7 @@ class DivvyProtocol(ParaViewWebProtocol):
   # given a list of pairs of names from self.fields, calc and publish 2D histograms
   @exportRpc('divvy.histograms.request')
   def requestHistograms(self, request):
-    print(request)
+    # print(request)
     if 'hist2D' in request:
       for pair in request['hist2D']:
         result = self.get2DHistogram(pair)
@@ -382,7 +382,7 @@ class DivvyProtocol(ParaViewWebProtocol):
   @exportRpc('divvy.annotation.update')
   def updateAnnotation(self, annot):
     numBins = self.numBins
-    print(annot)
+    # print(annot)
     prevAnnot = self.activeAnnot
     self.activeAnnot = annot
     # {
@@ -440,7 +440,7 @@ class DivvyProtocol(ParaViewWebProtocol):
       labeledRows = np.array(list(map(lambda x: annotScore if x else UNSELECTED_INDEX, labeledRows))).astype(np.uint8)
 
       self.selectedRows = { 'score': [annotScore], 'data': labeledRows.astype(np.uint8) }
-      print('Selected row count:', np.sum(self.selectedRows['data'] == annotScore), 'scoreIndex', annotScore)
+      # print('Selected row count:', np.sum(self.selectedRows['data'] == annotScore), 'scoreIndex', annotScore)
     elif selectionType == 'partition':
       # partitions label all the rows in a column with their scores.
       var = annot['selection']['partition']['variable']
