@@ -49,20 +49,29 @@ import argparse
 class _DivvyServer(pv_wslink.PVServerProtocol):
     authKey = "wslink-secret"
     fileToLoad = None
+    viewportScale=1.0
+    viewportMaxWidth=2560
+    viewportMaxHeight=1440
 
     @staticmethod
     def add_arguments(parser):
         parser.add_argument("--data", default=None, help="path to data file to load", dest="fileToLoad")
+        parser.add_argument("--viewport-scale", default=1.0, type=float, help="Viewport scaling factor", dest="viewportScale")
+        parser.add_argument("--viewport-max-width", default=2560, type=int, help="Viewport maximum size in width", dest="viewportMaxWidth")
+        parser.add_argument("--viewport-max-height", default=1440, type=int, help="Viewport maximum size in height", dest="viewportMaxHeight")
 
     @staticmethod
     def configure(args):
         _DivvyServer.fileToLoad = args.fileToLoad
         _DivvyServer.authKey    = args.authKey
+        _DivvyServer.viewportScale     = args.viewportScale
+        _DivvyServer.viewportMaxWidth  = args.viewportMaxWidth
+        _DivvyServer.viewportMaxHeight = args.viewportMaxHeight
 
     def initialize(self):
         # Bring used components
         self.registerVtkWebProtocol(pv_protocols.ParaViewWebMouseHandler())
-        self.registerVtkWebProtocol(pv_protocols.ParaViewWebViewPort())
+        self.registerVtkWebProtocol(pv_protocols.ParaViewWebViewPort(_DivvyServer.viewportScale, _DivvyServer.viewportMaxWidth, _DivvyServer.viewportMaxHeight))
         self.registerVtkWebProtocol(pv_protocols.ParaViewWebViewPortImageDelivery())
 
         colorManager = pv_protocols.ParaViewWebColorManager()
