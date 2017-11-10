@@ -237,7 +237,7 @@ class DivvyProtocol(ParaViewWebProtocol):
     vtkX = self.dataTable.GetColumnByName(key)
     xrng = vtkX.GetRange()
     if xrng[0] == xrng[1]:
-      xrng[1] += 1
+      xrng = (xrng[0], xrng[0] + 1)
     if key in self.hist1DCache:
       hist1D = self.hist1DCache[key]
     else:
