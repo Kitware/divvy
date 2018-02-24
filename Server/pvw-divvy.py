@@ -28,6 +28,14 @@ from __future__ import absolute_import, division, print_function
 
 # import to process args
 import os
+import sys
+
+# Try handle virtual env if provided
+if '--virtual-env' in sys.argv:
+  virtualEnvPath = sys.argv[sys.argv.index('--virtual-env') + 1]
+  virtualEnv = virtualEnvPath + '/bin/activate_this.py'
+  execfile(virtualEnv, dict(__file__=virtualEnv))
+
 
 # import paraview modules.
 from paraview.web import pv_wslink
@@ -55,6 +63,7 @@ class _DivvyServer(pv_wslink.PVServerProtocol):
 
     @staticmethod
     def add_arguments(parser):
+        parser.add_argument("--virtual-env", default=None, help="Path to virtual environment to use")
         parser.add_argument("--data", default=None, help="path to data file to load", dest="fileToLoad")
         parser.add_argument("--viewport-scale", default=1.0, type=float, help="Viewport scaling factor", dest="viewportScale")
         parser.add_argument("--viewport-max-width", default=2560, type=int, help="Viewport maximum size in width", dest="viewportMaxWidth")
