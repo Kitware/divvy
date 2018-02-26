@@ -17,6 +17,7 @@ program
   .option('-p, --port [8080]', 'Start web server with given port', 8080)
   .option('-d, --data [filePath]', 'Data to load')
   .option('-s, --server-only', 'Do not open the web browser\n')
+  .option('--virtual-env [path]', 'Path to virtual environment to use\n')
 
   .option('--paraview [path]', 'Provide the ParaView root path to use\n')
 
@@ -62,6 +63,11 @@ if(pvPythonExecs.length < 1) {
         '--port', program.port,
         '--data', quotePath(program.data),
     ];
+
+    if (program.virtualEnv) {
+      cmdLine.push('--virtual-env');
+      cmdLine.push(program.virtualEnv);
+    }
 
     console.log('\n===============================================================================');
     console.log('| Execute:');
