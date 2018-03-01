@@ -5,7 +5,7 @@ module.exports = {
         {
           test: /\.js$/,
           include: /node_modules(\/|\\)divvi(\/|\\)/,
-          loader: 'babel-loader?presets[]=es2015',
+          loader: 'babel-loader?presets[]=env',
         },
       ],
     },
@@ -14,7 +14,7 @@ module.exports = {
         {
           test: /\.js$/,
           include: /node_modules(\/|\\)divvi(\/|\\)/,
-          loader: 'babel-loader?presets[]=es2015',
+          loader: 'babel-loader?presets[]=env',
         },
       ],
     },

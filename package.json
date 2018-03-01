@@ -14,32 +14,28 @@
     "main": "./dist/divvy.js",
     "dependencies": {
         "base64-js": "1.2.1",
-        "commander": "2.11.0",
+        "commander": "2.13.0",
         "shelljs": "0.7.8",
-        "gh-pages": "1.0.0",
-        "paraviewweb": "2.5.20",
-        "react": "15.3.1",
-        "react-dom": "15.3.1"
+        "paraviewweb": "3.1.0",
+        "react": "16.2.0",
+        "react-dom": "16.2.0"
     },
     "devDependencies": {
+        "wslink": "0.1.7",
         "babel-plugin-transform-remove-strict-mode": "0.0.2",
         "d3": "3.5.17",
-        "eslint-config-prettier": "2.6.0",
-        "eslint-plugin-prettier": "2.3.1",
         "font-awesome": "4.7.0",
         "hammerjs": "2.0.8",
         "kw-doc": "1.1.1",
-        "kw-web-suite": "4.0.1",
+        "kw-web-suite": "5.0.1",
         "monologue.js": "0.3.5",
-        "mout": "1.1.0",
-        "prettier": "1.7.4",
-        "size-limit": "^0.11.3"
+        "mout": "1.1.0"
     },
     "scripts": {
         "size": "size-limit --why --config ./webpack.config.js",
-        "validate": "prettier --single-quote --trailing-comma es5 --print-width 100 --list-different \"Sources/**/*.js\"",
-        "reformat": "prettier --single-quote --trailing-comma es5 --print-width 100 --write \"Sources/**/*.js\"",
-        "reformat-only": "prettier --single-quote --trailing-comma es5 --print-width 100 --write",
+        "validate": "prettier --config ./prettier.config.js --list-different \"Sources/**/*.js\"",
+        "reformat": "prettier --config ./prettier.config.js --write \"Sources/**/*.js\"",
+        "reformat-only": "prettier --single-quote --trailing-comma es5 --print-width 80 --arrow-parens always --write",
         "doc": "kw-doc -c ./Documentation/config.js",
         "doc:www": "kw-doc -c ./Documentation/config.js -s",
         "doc:publish": "kw-doc -c ./Documentation/config.js -p",
@@ -48,8 +44,8 @@
         "build:debug": "webpack --progress --colors --display-modules",
         "build:release": "npm run build -- -p",
         "commit": "git cz",
-        "semantic-release": "semantic-release pre && npm publish && semantic-release post",
-        "develop": "webpack-dev-server"
+        "semantic-release": "semantic-release",
+        "start": "webpack-dev-server"
     },
     "config": {
         "commitizen": {

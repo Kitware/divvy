@@ -35,14 +35,12 @@ In general we try to be as portable as possible; the specific configurations bel
 
 We support the following development environments:
 
-- Node 5+
+- Node 8+
 - NPM 3+
 
 and the following browsers:
 
-- Firefox 45+
-- Chrome 50+
-- Safari 9.1+
+- Last 2 versions (Firefox, Chrome, Safari)
 
 Documentation
 =============
