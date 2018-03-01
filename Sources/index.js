@@ -7,6 +7,7 @@ import ReactDOM from 'react-dom';
 
 import URLExtract from 'paraviewweb/src/Common/Misc/URLExtract';
 import SizeHelper from 'paraviewweb/src/Common/Misc/SizeHelper';
+import ProgressLoaderWidget from 'paraviewweb/src/React/Widgets/ProgressLoaderWidget';
 import WorkbenchReact from './workbenchReact';
 
 import DivvyProvider from './provider';
@@ -20,6 +21,13 @@ container.style.width = '100vw';
 const client = DivvyClient.newInstance();
 // dataModel.client = client;
 const provider = DivvyProvider.newInstance({ client });
+
+function loading(message = 'Loading ParaView...') {
+  ReactDOM.unmountComponentAtNode(container);
+  ReactDOM.render(<ProgressLoaderWidget message={message} />, container);
+}
+
+client.onError(loading);
 
 // don't lay out the initial controls until field list is back.
 client.onReady(() => {
@@ -46,6 +54,7 @@ client.onReady(() => {
 // ----------------------------------------------------------------------------
 
 export function connect(userConfig, useArgsFromURL = false) {
+  loading();
   const config = {};
   if (useArgsFromURL) {
     Object.assign(config, URLExtract.extractURLParameters());

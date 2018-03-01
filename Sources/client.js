@@ -9,8 +9,15 @@ function divvyClient(publicAPI, model) {
   // private variables
   let ready = false;
   const readyCallbacks = [];
+  const errorCallbacks = [];
 
   const busy = (promise) => promise;
+
+  function triggerError(sConnect, message = 'Server disconnected') {
+    for (let i = 0; i < errorCallbacks.length; i++) {
+      errorCallbacks[i](message);
+    }
+  }
 
   publicAPI.connect = (userConfig) => {
     const config = Object.assign({ application: 'divvy' }, userConfig);
@@ -80,6 +87,8 @@ function divvyClient(publicAPI, model) {
           }
         );
     });
+    smartConnect.onConnectionError(triggerError);
+    smartConnect.onConnectionClose(triggerError);
     smartConnect.connect();
   };
 
@@ -100,6 +109,10 @@ function divvyClient(publicAPI, model) {
       return;
     }
     readyCallbacks.push(callback);
+  };
+
+  publicAPI.onError = (callback) => {
+    errorCallbacks.push(callback);
   };
 }
 

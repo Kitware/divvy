@@ -67,7 +67,7 @@ export default class ScatterPlotManager {
       pointSizeFunction: 'HighestBest',
       opacityBy: '',
       opacityFunction: 'HighestBest',
-      showRenderStats: true,
+      showRenderStats: false, // Good for perf debug in rendering
       hasMesh: provider.getClient().getHasMesh(),
       showMesh: false,
       enableStats: false,
