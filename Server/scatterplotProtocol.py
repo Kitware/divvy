@@ -104,6 +104,7 @@ class ScatterPlotProtocol(ParaViewWebProtocol):
     self.renderView = simple.CreateView('RenderView')
     self.renderView.InteractionMode = '3D'
     self.renderView.SMProxy.GetRenderWindow().SetMultiSamples(0)
+    self.renderView.EnableRenderOnInteraction = 0
 
     self.representationMap = self.createCustomShaderMap()
 
@@ -172,6 +173,17 @@ class ScatterPlotProtocol(ParaViewWebProtocol):
     simple.Render(self.renderView)
     simple.ResetCamera(self.renderView)
     self.renderView.CenterOfRotation = self.renderView.CameraFocalPoint
+    self.getApplication().InvokeEvent('UpdateEvent')
+
+  def showAxesGrid(self, visibility = True):
+    self.renderView.AxesGrid.Visibility = 1 if visibility else 0
+    self.outlineRepresentation.Visibility = 0 if visibility else 1
+
+  def attachListeners(self):
+    startCallback = lambda *args, **kwargs: self.showAxesGrid(False)
+    stopCallback = lambda *args, **kwargs: self.showAxesGrid(True)
+    tagStart = self.getApplication().AddObserver('StartInteractionEvent', startCallback)
+    tagStop = self.getApplication().AddObserver('EndInteractionEvent', stopCallback)
 
   # make or update a scatter plot
   @exportRpc('divvy.scatterplot.update')
@@ -199,6 +211,11 @@ class ScatterPlotProtocol(ParaViewWebProtocol):
       self.tableToPoints.KeepAllDataArrays = 1
 
       self.tableToPoints.UpdatePipeline()
+
+      self.outlineFilter = simple.Outline(Input=self.tableToPoints)
+      self.outlineRepresentation = simple.GetRepresentation(self.outlineFilter, self.renderView)
+      self.outlineRepresentation.DiffuseColor = [0.0, 0.0, 0.0]
+      self.outlineRepresentation.Visibility = 0
 
       self.representation = simple.GetRepresentation(self.tableToPoints, self.renderView)
       self.representation.Representation = 'Surface'
@@ -349,6 +366,7 @@ class ScatterPlotProtocol(ParaViewWebProtocol):
       elif self.meshRepresentation:
         self.meshRepresentation.Visibility = 0
 
+    self.getApplication().InvokeEvent('UpdateEvent')
 
     return { 'success': True }
 
@@ -451,6 +469,7 @@ class ScatterPlotProtocol(ParaViewWebProtocol):
       lutProxy.EnableOpacityMapping = 0
 
     self._selectionLutInitialized = True
+    self.getApplication().InvokeEvent('UpdateEvent')
 
   def setActiveAnnotation(self, activeAnnotation):
     self.activeSelectionInformation["activeAnnotation"] = activeAnnotation
@@ -492,6 +511,7 @@ class ScatterPlotProtocol(ParaViewWebProtocol):
       view.InteractionMode = '3D'
 
     self.resetCamera()
+    self.getApplication().InvokeEvent('UpdateEvent')
     return { 'success': True }
 
   @exportRpc('divvy.scatterplot.axes.update')
@@ -509,8 +529,10 @@ class ScatterPlotProtocol(ParaViewWebProtocol):
     if showMesh:
       self.representation.Scale = [1, 1, 1]
       self.renderView.AxesGrid.DataScale = [1, 1, 1]
+      self.outlineRepresentation.Scale = [1, 1, 1]
     else:
       self.representation.Scale = scale
+      self.outlineRepresentation.Scale = scale
       self.renderView.AxesGrid.DataScale = [scale[0], scale[1], scale[2]]
 
     # Transfer function may need rescaling.
@@ -523,6 +545,8 @@ class ScatterPlotProtocol(ParaViewWebProtocol):
     if forceReset or not np.allclose(scale, lastScale):
       # print("updateAxis resetCamera", scale, lastScale)
       self.resetCamera()
+
+    self.getApplication().InvokeEvent('UpdateEvent')
     return { 'success': True }
 
   @exportRpc('divvy.scatterplot.views.get')

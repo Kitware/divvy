@@ -81,7 +81,7 @@ class _DivvyServer(pv_wslink.PVServerProtocol):
         # Bring used components
         self.registerVtkWebProtocol(pv_protocols.ParaViewWebMouseHandler())
         self.registerVtkWebProtocol(pv_protocols.ParaViewWebViewPort(_DivvyServer.viewportScale, _DivvyServer.viewportMaxWidth, _DivvyServer.viewportMaxHeight))
-        self.registerVtkWebProtocol(pv_protocols.ParaViewWebViewPortImageDelivery())
+        self.registerVtkWebProtocol(pv_protocols.ParaViewWebPublishImageDelivery(decode=False))
 
         colorManager = pv_protocols.ParaViewWebColorManager()
         self.registerVtkWebProtocol(colorManager)
@@ -91,8 +91,12 @@ class _DivvyServer(pv_wslink.PVServerProtocol):
         scatterplot = ScatterPlotProtocol(dataProtocol, colorManager)
         self.registerVtkWebProtocol(scatterplot)
         dataProtocol.setScatterPlot(scatterplot)
+        scatterplot.attachListeners()
 
         self.updateSecret(_DivvyServer.authKey)
+
+        # tell the C++ web app to use no encoding. ParaViewWebPublishImageDelivery must be set to decode=False to match.
+        self.getApplication().SetImageEncoding(0);
 
 # =============================================================================
 # Main: Parse args and start server
