@@ -10,7 +10,7 @@ function divvyClient(publicAPI, model) {
   let ready = false;
   const readyCallbacks = [];
 
-  const busy = promise => promise;
+  const busy = (promise) => promise;
 
   publicAPI.connect = (userConfig) => {
     const config = Object.assign({ application: 'divvy' }, userConfig);
@@ -19,42 +19,66 @@ function divvyClient(publicAPI, model) {
       model.connection = connection;
       model.pvwClient = ParaViewWebClient.createClient(
         connection,
-        ['MouseHandler', 'ViewPort', 'ViewPortImageDelivery'],
+        ['MouseHandler', 'ViewPort', 'VtkImageDelivery'],
         {
-          Divvy: session =>
-            ({
-              getFieldInfo: () => busy(session.call('divvy.fields.get')),
-              // getScores: () => busy(session.call('divvy.scores.get')),
-              // hasMesh: () => busy(session.call('divvy.scatterplot.mesh')),
-              requestHistograms: request => busy(session.call('divvy.histograms.request', [request])),
-              requestAnnotationHistograms: request => busy(session.call('divvy.histograms.annotation.request', [request])),
-              subscribe1DHistogram: callback => session.subscribe('divvy.histogram1D.push', callback),
-              subscribe2DHistogram: callback => session.subscribe('divvy.histogram2D.push', callback),
-              subscribeSelectionCount: callback => session.subscribe('divvy.selection.count.push', callback),
-              updateAnnotation: annot => busy(session.call('divvy.annotation.update', [annot])),
-              // scatter plot
-              updateScatterPlot: request => busy(session.call('divvy.scatterplot.update', [request])),
-              getLutImages: () => busy(session.call('divvy.scatterplot.lut.images.get', [])),
-              getViews: () => busy(session.call('divvy.scatterplot.views.get')),
-              setActiveScores: activeScores => busy(session.call('divvy.scatterplot.active.scores', [activeScores])),
-              updateCamera: mode => busy(session.call('divvy.scatterplot.camera.update', [mode])),
-              updateAxis: (showMesh = false, force = false) => busy(session.call('divvy.scatterplot.axes.update', [showMesh, force])),
-            }),
-        },
+          Divvy: (session) => ({
+            getFieldInfo: () => busy(session.call('divvy.fields.get')),
+            // getScores: () => busy(session.call('divvy.scores.get')),
+            // hasMesh: () => busy(session.call('divvy.scatterplot.mesh')),
+            requestHistograms: (request) =>
+              busy(session.call('divvy.histograms.request', [request])),
+            requestAnnotationHistograms: (request) =>
+              busy(
+                session.call('divvy.histograms.annotation.request', [request])
+              ),
+            subscribe1DHistogram: (callback) =>
+              session.subscribe('divvy.histogram1D.push', callback),
+            subscribe2DHistogram: (callback) =>
+              session.subscribe('divvy.histogram2D.push', callback),
+            subscribeSelectionCount: (callback) =>
+              session.subscribe('divvy.selection.count.push', callback),
+            updateAnnotation: (annot) =>
+              busy(session.call('divvy.annotation.update', [annot])),
+            // scatter plot
+            updateScatterPlot: (request) =>
+              busy(session.call('divvy.scatterplot.update', [request])),
+            getLutImages: () =>
+              busy(session.call('divvy.scatterplot.lut.images.get', [])),
+            getViews: () => busy(session.call('divvy.scatterplot.views.get')),
+            setActiveScores: (activeScores) =>
+              busy(
+                session.call('divvy.scatterplot.active.scores', [activeScores])
+              ),
+            updateCamera: (mode) =>
+              busy(session.call('divvy.scatterplot.camera.update', [mode])),
+            updateAxis: (showMesh = false, force = false) =>
+              busy(
+                session.call('divvy.scatterplot.axes.update', [showMesh, force])
+              ),
+          }),
+        }
       );
-      publicAPI.serverAPI().getFieldInfo().then((result) => {
-        model.fieldList = result.fields;
-        model.scores = result.scores;
-        model.numberOfRows = result.numRows;
-        model.hasMesh = result.hasMesh;
-        ready = true;
+      publicAPI
+        .serverAPI()
+        .getFieldInfo()
+        .then(
+          (result) => {
+            model.fieldList = result.fields;
+            model.scores = result.scores;
+            model.numberOfRows = result.numRows;
+            model.hasMesh = result.hasMesh;
+            ready = true;
 
-        // we have an active connection and client, let everyone know.
-        readyCallbacks.forEach((callback) => { if (callback) callback(); });
-      }, (errResult) => {
-        ready = false;
-        console.error('failed to fetch field list', errResult);
-      });
+            // we have an active connection and client, let everyone know.
+            readyCallbacks.forEach((callback) => {
+              if (callback) callback();
+            });
+          },
+          (errResult) => {
+            ready = false;
+            console.error('failed to fetch field list', errResult);
+          }
+        );
     });
     smartConnect.connect();
   };
@@ -66,9 +90,9 @@ function divvyClient(publicAPI, model) {
     }
   };
 
-  publicAPI.pvwClient = () => (model.pvwClient);
+  publicAPI.pvwClient = () => model.pvwClient;
 
-  publicAPI.serverAPI = () => (model.pvwClient.Divvy);
+  publicAPI.serverAPI = () => model.pvwClient.Divvy;
 
   publicAPI.onReady = (callback) => {
     if (ready) {
@@ -88,7 +112,12 @@ const DEFAULT_VALUES = {
 export function extend(publicAPI, model, initialValues = {}) {
   Object.assign(model, DEFAULT_VALUES, initialValues);
 
-  CompositeClosureHelper.get(publicAPI, model, ['fieldList', 'hasMesh', 'scores', 'numberOfRows']);
+  CompositeClosureHelper.get(publicAPI, model, [
+    'fieldList',
+    'hasMesh',
+    'scores',
+    'numberOfRows',
+  ]);
 
   divvyClient(publicAPI, model);
 }

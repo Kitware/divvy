@@ -2,8 +2,8 @@
 import 'normalize.css';
 import 'babel-polyfill';
 
-import React            from 'react';
-import ReactDOM         from 'react-dom';
+import React from 'react';
+import ReactDOM from 'react-dom';
 
 import URLExtract from 'paraviewweb/src/Common/Misc/URLExtract';
 import SizeHelper from 'paraviewweb/src/Common/Misc/SizeHelper';
@@ -28,14 +28,11 @@ client.onReady(() => {
 
   // eslint-disable-next-line react/no-render-return-value
   const mainComponent = ReactDOM.render(
-    React.createElement(
-      WorkbenchReact,
-      { provider, client },
-    ),
-    container,
+    React.createElement(WorkbenchReact, { provider, client }),
+    container
   );
 
-    // Listen to window resize
+  // Listen to window resize
   SizeHelper.onSizeChange(() => {
     mainComponent.resize();
   });

@@ -52,9 +52,12 @@ function divvyProvider(publicAPI, model) {
       }
       // TODO: Shortcut hack - we know id 1 is parallel coords. It needs selection histos
       if (id === 1) {
-        model.client.serverAPI().requestAnnotationHistograms({ hist2D: variables });
+        model.client
+          .serverAPI()
+          .requestAnnotationHistograms({ hist2D: variables });
         // if there's an annotation, re-calc its histograms.
-        if (publicAPI.getAnnotation()) publicAPI.fireAnnotationChange(publicAPI.getAnnotation());
+        if (publicAPI.getAnnotation())
+          publicAPI.fireAnnotationChange(publicAPI.getAnnotation());
       }
     });
     publicAPI.onHistogram1DSubscriptionChange((request) => {
@@ -67,55 +70,65 @@ function divvyProvider(publicAPI, model) {
       }
     });
 
-    model.subscriptions.push(model.client.serverAPI().subscribe2DHistogram((data) => {
-      if (Array.isArray(data)) {
-        data.forEach((hist) => {
-          if (hist.selection) {
-            // a new range annotation will generate 2d histograms of the selection.
-            publicAPI.setSelectionData(hist);
-          } else {
-            publicAPI.setHistogram2D(hist.data);
-          }
-        });
-      } else {
-        console.error('Non array response from subscribe2DHistogram');
-      }
-    }));
-    model.subscriptions.push(model.client.serverAPI().subscribe1DHistogram((data) => {
-      if (Array.isArray(data)) {
-        data.forEach((hist) => {
-          publicAPI.setHistogram1D(hist.data);
-        });
-      } else {
-        console.error('Non array response from subscribe1DHistogram');
-      }
-    }));
-    model.subscriptions.push(model.client.serverAPI().subscribeSelectionCount((data) => {
-      if (Array.isArray(data)) {
-        data.forEach((item) => {
-          // this is 'count' data - for each score, a count of how many rows
-          // fall under that score.
-          publicAPI.setSelectionData(item);
-        });
-      } else {
-        console.error('Non array response from subscribeSelectionCount');
-      }
-    }));
+    model.subscriptions.push(
+      model.client.serverAPI().subscribe2DHistogram((data) => {
+        if (Array.isArray(data)) {
+          data.forEach((hist) => {
+            if (hist.selection) {
+              // a new range annotation will generate 2d histograms of the selection.
+              publicAPI.setSelectionData(hist);
+            } else {
+              publicAPI.setHistogram2D(hist.data);
+            }
+          });
+        } else {
+          console.error('Non array response from subscribe2DHistogram');
+        }
+      })
+    );
+    model.subscriptions.push(
+      model.client.serverAPI().subscribe1DHistogram((data) => {
+        if (Array.isArray(data)) {
+          data.forEach((hist) => {
+            publicAPI.setHistogram1D(hist.data);
+          });
+        } else {
+          console.error('Non array response from subscribe1DHistogram');
+        }
+      })
+    );
+    model.subscriptions.push(
+      model.client.serverAPI().subscribeSelectionCount((data) => {
+        if (Array.isArray(data)) {
+          data.forEach((item) => {
+            // this is 'count' data - for each score, a count of how many rows
+            // fall under that score.
+            publicAPI.setSelectionData(item);
+          });
+        } else {
+          console.error('Non array response from subscribeSelectionCount');
+        }
+      })
+    );
 
     publicAPI.onAnnotationChange((annotation) => {
       // Capture any partition annotation
       if (annotation.selection.type === 'partition') {
-        model.fieldPartitions[annotation.selection.partition.variable] = annotation;
+        model.fieldPartitions[
+          annotation.selection.partition.variable
+        ] = annotation;
       }
 
-      model.client.serverAPI().updateAnnotation(annotation)
+      model.client
+        .serverAPI()
+        .updateAnnotation(annotation)
         .then(
           (result) => {
             // console.log('updateAnnotation result', result);
           },
           (code, reason) => {
             console.error('updateAnnotation failed: ', code, reason);
-          },
+          }
         );
     });
   });

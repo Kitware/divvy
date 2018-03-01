@@ -1,5 +1,4 @@
-import RemoteRenderStatsTable from 'paraviewweb/src/NativeUI/Renderers/RemoteRendererStatsTable';
-import RemoteRenderer from 'paraviewweb/src/NativeUI/Canvas/RemoteRenderer';
+import VtkRenderer from 'paraviewweb/src/NativeUI/Renderers/VtkRenderer';
 
 export default class ScatterPlotManager {
   constructor(provider) {
@@ -15,28 +14,34 @@ export default class ScatterPlotManager {
 
     // Force a redraw and server for scatterplot processing
     if (provider.onAnnotationChange) {
-      this.subscriptions.push(this.dataProvider.onAnnotationChange(() => {
-        this.updateRenderers();
-      }));
+      this.subscriptions.push(
+        this.dataProvider.onAnnotationChange(() => {
+          this.updateRenderers();
+        })
+      );
     }
 
     if (provider.onFieldChange) {
-      this.subscriptions.push(this.dataProvider.onFieldChange((field) => {
-        this.model.arrayList = this.dataProvider.getFieldNames();
+      this.subscriptions.push(
+        this.dataProvider.onFieldChange((field) => {
+          this.model.arrayList = this.dataProvider.getFieldNames();
 
-        if (!field) {
-          // One or all fields removed
-          this.checkRemovedFields();
-        }
+          if (!field) {
+            // One or all fields removed
+            this.checkRemovedFields();
+          }
 
-        this.updateRenderers();
-      }));
+          this.updateRenderers();
+        })
+      );
     }
 
     if (provider.onScatterPlotUpdate) {
-      this.subscriptions.push(this.dataProvider.onScatterPlotUpdate(() => {
-        this.updateRenderers();
-      }));
+      this.subscriptions.push(
+        this.dataProvider.onScatterPlotUpdate(() => {
+          this.updateRenderers();
+        })
+      );
     }
 
     // Get fields to choose from
@@ -62,7 +67,7 @@ export default class ScatterPlotManager {
       pointSizeFunction: 'HighestBest',
       opacityBy: '',
       opacityFunction: 'HighestBest',
-      showRenderStats: false,
+      showRenderStats: true,
       hasMesh: provider.getClient().getHasMesh(),
       showMesh: false,
       enableStats: false,
@@ -70,12 +75,16 @@ export default class ScatterPlotManager {
 
     // Get remote view information
     this.client = provider.getClient();
-    this.client.serverAPI().getViews()
+    this.client
+      .serverAPI()
+      .getViews()
       .then(
         (views) => {
           this.viewId = Number(views['scatter-plot']);
 
-          this.client.serverAPI().getLutImages()
+          this.client
+            .serverAPI()
+            .getLutImages()
             .then(
               (lutImages) => {
                 this.colorMaps = lutImages;
@@ -89,12 +98,12 @@ export default class ScatterPlotManager {
               },
               (erp) => {
                 console.log('failed to get lut images: ', erp);
-              },
+              }
             );
         },
         (err) => {
           console.log('Error', err);
-        },
+        }
       );
   }
 
@@ -123,7 +132,10 @@ export default class ScatterPlotManager {
   }
 
   createRemoteRenderer(id) {
-    this.remoteRenderers[id] = new RemoteRenderer(this.client.pvwClient(), null, this.viewId, new RemoteRenderStatsTable());
+    this.remoteRenderers[id] = VtkRenderer.newInstance({
+      client: this.client.pvwClient(),
+      viewId: this.viewId,
+    });
     return this.remoteRenderers[id];
   }
 
@@ -166,7 +178,10 @@ export default class ScatterPlotManager {
 
     if (model.pointSizeBy) {
       sizeOptions.array = model.pointSizeBy;
-      sizeOptions.range = [Number(model.pointSizeMin), Number(model.pointSizeMax)];
+      sizeOptions.range = [
+        Number(model.pointSizeMin),
+        Number(model.pointSizeMax),
+      ];
       sizeOptions.scalarRange = this.getScalarRange(model.pointSizeBy);
       sizeOptions.scaleFunction = model.pointSizeFunction;
     } else {
@@ -180,25 +195,27 @@ export default class ScatterPlotManager {
     }
 
     return new Promise((a, r) => {
-      this.client.serverAPI().updateScatterPlot(model)
-      //   [
-      //   model.x,
-      //   model.y,
-      //   model.z,
-      //   { // Color
-      //     array: model.colorBy,
-      //     colorMap: model.colorMapName,
-      //   },
-      //   model.usePointSprites,
-      //   sizeOptions,
-      //   { // Opacity
-      //     array: model.opacityBy,
-      //     scalarRange: this.getScalarRange(model.opacityBy),
-      //     opacityFunction: model.opacityFunction,
-      //   },
-      //   model.pointRepresentation,
-      //   model.showRenderStats,
-      // ])
+      this.client
+        .serverAPI()
+        .updateScatterPlot(model)
+        //   [
+        //   model.x,
+        //   model.y,
+        //   model.z,
+        //   { // Color
+        //     array: model.colorBy,
+        //     colorMap: model.colorMapName,
+        //   },
+        //   model.usePointSprites,
+        //   sizeOptions,
+        //   { // Opacity
+        //     array: model.opacityBy,
+        //     scalarRange: this.getScalarRange(model.opacityBy),
+        //     opacityFunction: model.opacityFunction,
+        //   },
+        //   model.pointRepresentation,
+        //   model.showRenderStats,
+        // ])
         .then(
           (resp) => {
             this.resetCamera(id);
@@ -207,28 +224,30 @@ export default class ScatterPlotManager {
           (err) => {
             console.log(err);
             r(err);
-          },
+          }
         );
     });
   }
 
   resetCamera(id, force = false) {
-    this.client.serverAPI().updateAxis(this.model.showMesh, force)
+    this.client
+      .serverAPI()
+      .updateAxis(this.model.showMesh, force)
       .then(
         (resp) => {
           if (id && this.remoteRenderers[id]) {
-            this.remoteRenderers[id].showRenderStats(this.model.showRenderStats);
+            this.remoteRenderers[id].setShowFPS(this.model.showRenderStats);
             this.remoteRenderers[id].render();
           } else {
             Object.keys(this.remoteRenderers).forEach((name) => {
-              this.remoteRenderers[name].showRenderStats(this.model.showRenderStats);
+              this.remoteRenderers[name].setShowFPS(this.model.showRenderStats);
               this.remoteRenderers[name].render();
             });
           }
         },
         (err) => {
           console.log('Error reset camera', err);
-        },
+        }
       );
   }
 
@@ -236,20 +255,23 @@ export default class ScatterPlotManager {
     if (['2D', '3D'].indexOf(mode) !== -1) {
       this.projection = mode;
     }
-    this.client.serverAPI().updateCamera(mode).then(
-      (resp) => {
-        if (id && this.remoteRenderers[id]) {
-          this.remoteRenderers[id].render();
-        } else {
-          Object.keys(this.remoteRenderers).forEach((name) => {
-            this.remoteRenderers[name].render();
-          });
+    this.client
+      .serverAPI()
+      .updateCamera(mode)
+      .then(
+        (resp) => {
+          if (id && this.remoteRenderers[id]) {
+            this.remoteRenderers[id].render();
+          } else {
+            Object.keys(this.remoteRenderers).forEach((name) => {
+              this.remoteRenderers[name].render();
+            });
+          }
+        },
+        (err) => {
+          console.log('Error updateProjection', err);
         }
-      },
-      (err) => {
-        console.log('Error updateProjection', err);
-      },
-    );
+      );
   }
 
   getScalarRange(arrayName) {

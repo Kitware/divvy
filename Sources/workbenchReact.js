@@ -1,5 +1,5 @@
-/* global window, document */
 import React from 'react';
+import PropTypes from 'prop-types';
 
 import Workbench from 'paraviewweb/src/Component/Native/Workbench';
 import ReactAdapter from 'paraviewweb/src/Component/React/ReactAdapter';
@@ -59,7 +59,7 @@ export default class WorkbenchReact extends React.Component {
     // 'unselected' or unscored data is represented by an index equal to the number of scores.
     this.unselectedScoreIndex = this.scores.length;
     // all scores active initially, including the 'unselected' value, the last index.
-    const activeScores = this.scores.map(score => score.index);
+    const activeScores = this.scores.map((score) => score.index);
     activeScores.push(this.unselectedScoreIndex);
     this.setState({ activeScores });
 
@@ -80,7 +80,10 @@ export default class WorkbenchReact extends React.Component {
       getLegend: provider.getLegend,
       scroll: true,
     };
-    const annotEditor = new ReactAdapter(AnnotationEditorWidget, annotationWidgetProps);
+    const annotEditor = new ReactAdapter(
+      AnnotationEditorWidget,
+      annotationWidgetProps
+    );
 
     const viewports = {
       Fields: {
@@ -123,29 +126,37 @@ export default class WorkbenchReact extends React.Component {
       this.forceUpdate();
     });
 
-    this.subscriptions.push(this.workbench.onChange((event) => {
-      const newScatterPlotVisible = (event.viewports['3D Scatterplot'].viewport < event.count
-          && event.viewports['3D Scatterplot'].viewport > -1);
-      if (newScatterPlotVisible && !this.state.scatterPlotVisible) {
-        // popup scatterplot controls whenever scatterplot is newly shown.
-        // if (this.scatterPlotControl) this.scatterPlotControl.setState({ overlayVisible: true });
-      }
-      this.setState({
-        scatterPlotVisible: newScatterPlotVisible,
-      });
-    }));
+    this.subscriptions.push(
+      this.workbench.onChange((event) => {
+        const newScatterPlotVisible =
+          event.viewports['3D Scatterplot'].viewport < event.count &&
+          event.viewports['3D Scatterplot'].viewport > -1;
+        if (newScatterPlotVisible && !this.state.scatterPlotVisible) {
+          // popup scatterplot controls whenever scatterplot is newly shown.
+          // if (this.scatterPlotControl) this.scatterPlotControl.setState({ overlayVisible: true });
+        }
+        this.setState({
+          scatterPlotVisible: newScatterPlotVisible,
+        });
+      })
+    );
 
-    this.subscriptions.push(this.workbench.onVisibilityChange((event) => {
-      const { component, index /* , count */ } = event;
-      // console.log(
-      //   component ? component : 'none', index, count,
-      //   index === -1 || index >= count ? 'hidden' : 'visible',
-      // );
-      if (index !== -1 && component === this.manager.getRemoteRenderer('workbench-scatterplot')) {
-        // Tell scatterplot to update before first render.
-        this.manager.updateModel(this.manager.getModel());
-      }
-    }));
+    this.subscriptions.push(
+      this.workbench.onVisibilityChange((event) => {
+        const { component, index /* , count */ } = event;
+        // console.log(
+        //   component ? component : 'none', index, count,
+        //   index === -1 || index >= count ? 'hidden' : 'visible',
+        // );
+        if (
+          index !== -1 &&
+          component === this.manager.getRemoteRenderer('workbench-scatterplot')
+        ) {
+          // Tell scatterplot to update before first render.
+          this.manager.updateModel(this.manager.getModel());
+        }
+      })
+    );
 
     // make sure annot editor hears about annot changes
     provider.onAnnotationChange((annot) => {
@@ -168,15 +179,23 @@ export default class WorkbenchReact extends React.Component {
   }
 
   updateActiveScores(activeScores) {
-    this.props.provider.getClient().serverAPI().setActiveScores(activeScores).then(() => {
-      this.manager.getRemoteRenderer('workbench-scatterplot').render(true);
-    });
+    this.props.provider
+      .getClient()
+      .serverAPI()
+      .setActiveScores(activeScores)
+      .then(() => {
+        this.manager.getRemoteRenderer('workbench-scatterplot').render(true);
+      });
 
     if (this.parallelCoordinates) {
       // filter the unselected index
-      this.parallelCoordinates.setVisibleScoresForSelection(activeScores.filter(s => s < this.unselectedScoreIndex));
+      this.parallelCoordinates.setVisibleScoresForSelection(
+        activeScores.filter((s) => s < this.unselectedScoreIndex)
+      );
       // background is shown if unselected is in the list.
-      this.parallelCoordinates.setShowOnlySelection(activeScores.indexOf(this.unselectedScoreIndex) === -1);
+      this.parallelCoordinates.setShowOnlySelection(
+        activeScores.indexOf(this.unselectedScoreIndex) === -1
+      );
       this.parallelCoordinates.render();
     }
 
@@ -202,7 +221,6 @@ export default class WorkbenchReact extends React.Component {
             activeWindow={this.state.activeWindow}
             onActiveWindow={this.onActiveWindow}
             provider={this.props.provider}
-
             workbench={this.workbench}
           />
           <AnnotationEditorToggleTool
@@ -215,17 +233,22 @@ export default class WorkbenchReact extends React.Component {
             activeWindow={this.state.activeWindow}
             onActiveWindow={this.onActiveWindow}
             provider={this.props.provider}
-            overlayVisible={this.props.provider.getActiveFieldNames().length <= 1}
+            overlayVisible={
+              this.props.provider.getActiveFieldNames().length <= 1
+            }
           />
           <ParallelCoordinatesToggleTool
             activeWindow={this.state.activeWindow}
             onActiveWindow={this.onActiveWindow}
             provider={this.props.provider}
-
-            showOnlySelection={this.state.activeScores.indexOf(this.unselectedScoreIndex) === -1}
-            partitionScores={this.state.activeScores.filter(s => s < this.unselectedScoreIndex)}
+            showOnlySelection={
+              this.state.activeScores.indexOf(this.unselectedScoreIndex) === -1
+            }
+            partitionScores={this.state.activeScores.filter(
+              (s) => s < this.unselectedScoreIndex
+            )}
           />
-          { this.state.scatterPlotVisible ?
+          {this.state.scatterPlotVisible ? (
             <ScatterPlotControlToggleTool
               activeWindow={this.state.activeWindow}
               onActiveWindow={this.onActiveWindow}
@@ -235,17 +258,22 @@ export default class WorkbenchReact extends React.Component {
               activeScores={this.state.activeScores}
               onActiveScoresChange={this.updateActiveScores}
               overlayVisible={this.state.scatterPlotVisible}
-              ref={(c) => { this.scatterPlotControl = c; }}
-            /> : null
-          }
-          { this.state.scatterPlotVisible ?
+              ref={(c) => {
+                this.scatterPlotControl = c;
+              }}
+            />
+          ) : null}
+          {this.state.scatterPlotVisible ? (
             <section className={style.cameraTools}>
               <ScatterPlotCameraControl manager={this.manager} />
-            </section> : null
-          }
+            </section>
+          ) : null}
         </div>
         <div className={style.content}>
-          <ComponentToReact className={style.fullSize} component={this.workbench} />
+          <ComponentToReact
+            className={style.fullSize}
+            component={this.workbench}
+          />
         </div>
       </div>
     );
@@ -253,10 +281,8 @@ export default class WorkbenchReact extends React.Component {
 }
 
 WorkbenchReact.propTypes = {
-  // eslint-disable-next-line
-  provider: React.PropTypes.object.isRequired,
-  // eslint-disable-next-line
-  showUncertainty: React.PropTypes.bool,
+  provider: PropTypes.object.isRequired,
+  showUncertainty: PropTypes.bool,
 };
 
 WorkbenchReact.defaultProps = {
