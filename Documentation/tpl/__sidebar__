@@ -1,7 +1,7 @@
 docs:
   getting_started:
     overview: index.html
-
+    version_compatibility: compatibility.html
   develop:
     requirement: develop_requirement.html
     build: develop_build.html
