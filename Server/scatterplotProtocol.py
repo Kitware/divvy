@@ -474,6 +474,9 @@ class ScatterPlotProtocol(ParaViewWebProtocol):
   def setActiveAnnotation(self, activeAnnotation):
     self.activeSelectionInformation["activeAnnotation"] = activeAnnotation
     self.updateUserSelectionLutProperties()
+    # Force render
+    simple.Render(self.renderView)
+    self.getApplication().InvokeEvent('UpdateEvent')
 
   @exportRpc("divvy.scatterplot.active.scores")
   def setActiveScores(self, activeScores):
