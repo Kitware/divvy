@@ -15,10 +15,24 @@ from wslink import register as exportRpc
 # data, math
 import vtk, vtk.util.numpy_support
 # from vtk.util.numpy_support import vtk_to_numpy, numpy_to_vtk
+
 try:
+    # PV 5.6
     from vtkmodules.vtkPVServerManagerRendering import vtkSMPVRepresentationProxy
 except:
+    pass
+
+try:
+    # PV 5.7
     from paraview.modules.vtkPVServerManagerRendering import vtkSMPVRepresentationProxy
+except:
+    pass
+
+try:
+    # PV 5.8
+    from paraview.servermanager import vtkSMPVRepresentationProxy
+except:
+    pass
 
 import numpy as np
 
