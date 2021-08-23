@@ -33,6 +33,10 @@ module.exports = {
     'no-nested-ternary': 0,
     'react/forbid-prop-types': 0,
     'react/no-array-index-key': 0,
+    'react/no-deprecated': 0,
+    'react/destructuring-assignment': 0,
+    'prefer-object-spread': 0,
+    'lines-between-class-members': 0,
   },
   plugins: [
     'prettier'

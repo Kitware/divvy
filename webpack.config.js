@@ -5,8 +5,7 @@ const outputPath = path.join(__dirname, './dist');
 
 const divvyRules = require('./Utilities/config/rules-divvy.js');
 const linterRules = require('./Utilities/config/rules-linter.js');
-
-const pvwRules = require('./node_modules/paraviewweb/config/webpack.loaders.js');
+const pvwRules = require('./Utilities/config/rules-pvw.js');
 
 const plugins = [];
 
@@ -20,7 +19,7 @@ module.exports = {
   },
   module: {
     rules: [
-      { test: entry, loader: 'expose-loader?divvy' },
+      { test: entry, loader: 'expose-loader', options: { exposes: ['divvy'] } },
     ].concat(linterRules, divvyRules, pvwRules),
   },
   resolve: {

@@ -1,6 +1,3 @@
-/* global window, document */
-import 'babel-polyfill';
-
 import CompositeClosureHelper from 'paraviewweb/src/Common/Core/CompositeClosureHelper';
 
 // import AnnotationStoreProvider from 'paraviewweb/src/InfoViz/Core/AnnotationStoreProvider';

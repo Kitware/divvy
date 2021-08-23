@@ -1,6 +1,3 @@
-/* global window, document */
-import 'babel-polyfill';
-
 import CompositeClosureHelper from 'paraviewweb/src/Common/Core/CompositeClosureHelper';
 import SmartConnect from 'wslink/src/SmartConnect';
 import ParaViewWebClient from 'paraviewweb/src/IO/WebSocket/ParaViewWebClient';
