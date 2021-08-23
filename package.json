@@ -4,7 +4,7 @@
     "description": "ParaViewWeb/Divvy for your Data Analytic",
     "repository": {
         "type": "git",
-        "url": "git+https://github.com/kitware/divvy.git"
+        "url": "https://github.com/kitware/divvy.git"
     },
     "license": "BSD-3-Clause",
     "bugs": {

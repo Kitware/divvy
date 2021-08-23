@@ -2,8 +2,6 @@ r"""
     ParaViewWeb protocol to satisfy RPC and publish/subscribe requests from Divvy
 
 """
-from __future__ import absolute_import, division, print_function
-
 import os, math
 
 # import paraview modules.
@@ -64,6 +62,16 @@ def fillTableWithDataSet(table, dataset):
       nbColumns = dataset.GetNumberOfColumns()
       for cIdx in range(nbColumns):
         table.AddColumn(dataset.GetColumn(cIdx))
+  elif dataset.IsA('vtkPartitionedDataSetCollection'):
+    nbPartitions = dataset.GetNumberOfPartitionedDataSets()
+    if nbPartitions:
+      for pIdx in range(nbPartitions):
+        fillTableWithDataSet(table, dataset.GetPartitionedDataSet(pIdx))
+  elif dataset.IsA('vtkPartitionedDataSet'):
+    nbPartitions = dataset.GetNumberOfPartitions()
+    if nbPartitions:
+      for pIdx in range(nbPartitions):
+        fillTableWithDataSet(table, dataset.GetPartitionAsDataObject(pIdx))
   elif dataset:
     if nbRows == 0 or nbRows == dataset.GetNumberOfPoints():
       pd = dataset.GetPointData()
@@ -200,7 +208,6 @@ class DivvyProtocol(ParaViewWebProtocol):
       return
     self._userSelection.DeepCopy(selection)
     self._userSelection.SetName(USER_SELECTION)
-
 
   @exportRpc('divvy.available.scores')
   def getAvailableScores(self):
@@ -445,7 +452,7 @@ class DivvyProtocol(ParaViewWebProtocol):
       # partitions label all the rows in a column with their scores.
       var = annot['selection']['partition']['variable']
       # retrieve the column
-      vtkcol = self.dataTable.GetColumnByName(var);
+      vtkcol = self.dataTable.GetColumnByName(var)
 
       if not vtkcol:
         print('missing data column', vtkcol)

@@ -1,8 +1,6 @@
 r"""
     ParaViewWeb protocol to satisfy requests about scatterplot
 """
-from __future__ import absolute_import, division, print_function
-
 import os, json, re
 
 # import paraview modules.
@@ -218,10 +216,10 @@ class ScatterPlotProtocol(ParaViewWebProtocol):
         self.dataMesh.GetClientSideObject().SetOutput(self.divvyProtocol.getMesh())
 
       # copy data from the main protocol, and set up pipelilne
-      trivProducer = simple.TrivialProducer()
-      trivProducer.GetClientSideObject().SetOutput(self.dataTable)
+      self.trivProducer = simple.TrivialProducer()
+      self.trivProducer.GetClientSideObject().SetOutput(self.dataTable)
 
-      self.tableToPoints = simple.TableToPoints(Input=trivProducer)
+      self.tableToPoints = simple.TableToPoints(Input=self.trivProducer)
       self.tableToPoints.XColumn = config['x']
       self.tableToPoints.YColumn = config['y']
       self.tableToPoints.ZColumn = config['z']
@@ -256,6 +254,8 @@ class ScatterPlotProtocol(ParaViewWebProtocol):
 
       self.renderView.OrientationAxesVisibility = 0
       self.renderView.Background = [1.0, 1.0, 1.0]
+      self.renderView.BackgroundColorMode = 0 # PV 5.10
+      self.renderView.UseColorPaletteForBackground = 0
 
       # create a LUT, if needed
       if 'colorBy' in config:
@@ -486,6 +486,10 @@ class ScatterPlotProtocol(ParaViewWebProtocol):
       lutProxy.EnableOpacityMapping = 0
 
     self._selectionLutInitialized = True
+
+    # Let PV know that the VTK data has been modified
+    self.trivProducer.MarkModified(self.trivProducer)
+
     self.getApplication().InvokeEvent('UpdateEvent')
 
   def setActiveAnnotation(self, activeAnnotation):
