@@ -123,6 +123,8 @@ class ScatterPlotProtocol(ParaViewWebProtocol):
 
     self.representationMap = self.createCustomShaderMap()
 
+    self.trivProducer = None
+
     self._lutImages = None
     self._colorMapName = ''
 
@@ -488,7 +490,8 @@ class ScatterPlotProtocol(ParaViewWebProtocol):
     self._selectionLutInitialized = True
 
     # Let PV know that the VTK data has been modified
-    self.trivProducer.MarkModified(self.trivProducer)
+    if self.trivProducer:
+      self.trivProducer.MarkModified(self.trivProducer)
 
     self.getApplication().InvokeEvent('UpdateEvent')
 
