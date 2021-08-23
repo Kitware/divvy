@@ -19,4 +19,4 @@ To use Divvy you need to have ParaView (5.10+) which can be [downloaded here](ht
 ./paraview/bin/pvpython -m paraview.apps.divvy --data /path/to/data/disk_out_ref.ex2 --port 1234
 ```
 
-Then open your browser at `http://localhost:1234/
+Then open your browser at `http://localhost:1234/`
