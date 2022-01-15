@@ -15,7 +15,7 @@
     "dependencies": {
         "base64-js": "1.2.1",
         "commander": "3.0.0",
-        "shelljs": "0.8.3",
+        "shelljs": "0.8.5",
         "paraviewweb": "3.2.19",
         "react": "16.9.0",
         "react-dom": "16.9.0"
