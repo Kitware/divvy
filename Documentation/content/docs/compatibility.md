@@ -7,3 +7,5 @@ The table below indicates which versions of ParaView and Divvy work together.
 |:--------:|:-----------------------:|:-----------------------------------:|
 | 5.5      | 1.3.14                  | < 1.4.0                             |
 | 5.10     | 1.4.0                   | <= master                           |
+| 5.12     | 1.4.0                   | <= master                           |
+| 5.13     | Removed from bundle     | <= master                           |
